@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import ImprimirOrden from "./ImprimirOrden.jsx";
+import FormOrdenAdmin from "./FormOrdenAdmin.jsx";
 import {
   supabase,
   obtenerSesion, cerrarSesion,
@@ -289,6 +290,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
   const [filtroEst, setFE]    = useState("todos");
   const [busqueda, setBusq]   = useState("");
   const [ordenSel, setOS]     = useState(null);
+  const [solicitando, setSol] = useState(false);
 
   const cargar = async () => {
     setLoad(true);
@@ -353,6 +355,9 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ color:C.muted, fontSize:12 }}>{usuario?.nombre_completo}</span>
+            <button onClick={() => setSol(true)} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+              + Solicitar orden
+            </button>
             <button onClick={onCapturarManual} style={{ background:C.warn, color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700 }}>
               📋 Captura manual
             </button>
@@ -516,6 +521,9 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
           </Card>
         )}
       </div>
+
+      {/* Solicitar orden */}
+      {solicitando && <FormOrdenAdmin usuario={usuario} onCerrar={() => setSol(false)} onExito={() => { setSol(false); cargar(); }} />}
 
       {/* Modal */}
       <ModalOrden orden={ordenSel} onClose={() => setOS(null)} onActualizado={() => { cargar(); setOS(null); }} usuario={usuario} tecnicos={tecnicos} materiales={materiales} />
