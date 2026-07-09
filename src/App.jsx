@@ -20,11 +20,22 @@ function PantallaLogin({ onLogin }) {
   const [loading, setLoad] = useState(false)
 
   const continuar = async () => {
-    if (!empleado.trim()) { setErr("Ingresa tu número de empleado."); return; }
+    const val = empleado.trim();
+    if (!val) { setErr("Ingresa tu número de empleado."); return; }
+
+    // Excepción: TOOLING01
+    const esSuperAdmin = val.toUpperCase() === "TOOLING01";
+
+    // Validación: debe ser exactamente 5 dígitos numéricos (o TOOLING01)
+    if (!esSuperAdmin && !/^\d{5}$/.test(val)) {
+      setErr("El número de empleado debe tener exactamente 5 dígitos.");
+      return;
+    }
+
     setLoad(true); setErr("")
-    const requiere = await necesitaPin(empleado)
+    const requiere = await necesitaPin(val)
     if (requiere === true) { setLoad(false); setPaso("pin"); return; }
-    const { usuario, error } = await loginSinPin(empleado)
+    const { usuario, error } = await loginSinPin(val)
     setLoad(false)
     if (error) { setErr(error); return; }
     onLogin(usuario)
