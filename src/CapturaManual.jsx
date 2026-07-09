@@ -456,7 +456,7 @@ function PantallaExito({ folio, onOtra, onVolver }) {
 }
 
 // ── APP PRINCIPAL ─────────────────────────────────────────────
-export default function App() {
+export default function App({ onVolver }) {
   const usuario = obtenerSesion();
   const [pantalla, setPantalla] = useState("form"); // form | exito
   const [folio, setFolio]       = useState(null);
@@ -487,7 +487,7 @@ export default function App() {
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
             <span style={{ color:C.muted, fontSize:12 }}>{usuario.nombre_completo}</span>
-            <button onClick={() => window.history.back()} style={{ background:C.border, color:C.muted,
+            <button onClick={() => { if (onVolver) onVolver(); else window.history.back(); }} style={{ background:C.border, color:C.muted,
               border:"none", borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:12 }}>
               ← Panel
             </button>
@@ -517,7 +517,7 @@ export default function App() {
           <PantallaExito
             folio={folio}
             onOtra={() => { setFolio(null); setPantalla("form"); }}
-            onVolver={() => window.history.back()}
+            onVolver={() => { if (onVolver) onVolver(); else window.history.back(); }}
           />
         )}
       </div>
