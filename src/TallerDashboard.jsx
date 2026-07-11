@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import ImprimirOrden from "./ImprimirOrden.jsx";
+import PanelTecnicos from "./PanelTecnicos.jsx";
 import FormOrdenAdmin from "./FormOrdenAdmin.jsx";
 import {
   supabase,
@@ -481,45 +482,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
         )}
 
         {/* ── TÉCNICOS */}
-        {tab === "Técnicos" && (
-          <Card style={{ padding:0 }}>
-            <div style={{ padding:"14px 20px", borderBottom:`1px solid ${C.border}`, fontWeight:600 }}>Personal técnico</div>
-            {loading ? <Spinner /> : (
-              <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
-                <thead>
-                  <tr style={{ borderBottom:`1px solid ${C.border}` }}>
-                    {["Técnico","Órdenes","Prom. hrs / orden","Carga"].map(h => (
-                      <th key={h} style={{ padding:"10px 20px", color:C.muted, fontWeight:600, textAlign:"left" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {grafTec.map((t,i) => {
-                    const ef = Math.max(0, Math.min(100, Math.round(100-(t.promedio_hrs-3)*8)));
-                    return (
-                      <tr key={t.tecnico} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66" }}>
-                        <td style={{ padding:"12px 20px", fontWeight:600 }}>{t.tecnico}</td>
-                        <td style={{ padding:"12px 20px" }}>{t.total_ordenes}</td>
-                        <td style={{ padding:"12px 20px", color:C.textSub }}>{t.promedio_hrs} hrs</td>
-                        <td style={{ padding:"12px 20px" }}>
-                          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                            <div style={{ flex:1, height:6, background:C.border, borderRadius:3, overflow:"hidden" }}>
-                              <div style={{ width:`${ef}%`, height:"100%", background:ef>70?C.success:ef>40?C.warn:C.danger, borderRadius:3 }} />
-                            </div>
-                            <span style={{ color:C.muted, fontSize:12, minWidth:32 }}>{ef}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {grafTec.length === 0 && (
-                    <tr><td colSpan={4} style={{ padding:40, textAlign:"center", color:C.muted }}>Sin datos aún.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-          </Card>
-        )}
+        {tab === "Técnicos" && <PanelTecnicos />}
       </div>
 
       {/* Solicitar orden */}
