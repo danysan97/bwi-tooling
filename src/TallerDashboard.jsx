@@ -361,7 +361,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ color:C.muted, fontSize:12 }}>{usuario?.nombre_completo}</span>
-            <button onClick={() => setExp(true)} style={{ background:C.purple??"#8B5CF6", color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+            <button onClick={() => setExp(true)} style={{ background:"#8B5CF6", color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700 }}>
               📊 Exportar
             </button>
             <button onClick={() => setSol(true)} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700 }}>
