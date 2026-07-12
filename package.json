@@ -1,7 +1,7 @@
 {
-  "name": "BWI-TOOLROOM",
+  "name": "bwi-tooling",
   "version": "1.0.0",
-  "description": "Sistema de Órdenes de Trabajo — BWI Departamento de TOOLROOM",
+  "description": "Sistema de Órdenes de Trabajo — BWI Departamento de Tooling",
   "type": "module",
   "scripts": {
     "dev":     "vite",
@@ -12,7 +12,8 @@
     "@supabase/supabase-js": "^2.43.0",
     "react":                 "^18.3.0",
     "react-dom":             "^18.3.0",
-    "recharts":              "^2.12.0"
+    "recharts":              "^2.12.0",
+    "xlsx":                  "^0.18.5"
   },
   "devDependencies": {
     "@vitejs/plugin-react":  "^4.3.0",
