@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import ImprimirOrden from "./ImprimirOrden.jsx";
 import PanelTecnicos from "./PanelTecnicos.jsx";
+import PanelUsuarios from "./PanelUsuarios.jsx";
 import FormOrdenAdmin from "./FormOrdenAdmin.jsx";
 import {
   supabase,
@@ -276,7 +277,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
 }
 
 // ── APP PRINCIPAL ─────────────────────────────────────────────
-const TABS = ["Órdenes","Gráficas","Técnicos"];
+const TABS_ADMIN = ["Órdenes","Gráficas","Técnicos","Usuarios"];
+const TABS_BASE  = ["Órdenes","Gráficas","Técnicos"];
 
 export default function App({ usuario: usuarioProp, onCapturarManual, onSalir }) {
   const usuario = usuarioProp || obtenerSesion();
@@ -380,7 +382,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
 
         {/* Tabs */}
         <div style={{ display:"flex", gap:4, marginBottom:18, background:C.surface, borderRadius:10, padding:4, width:"fit-content", border:`1px solid ${C.border}` }}>
-          {TABS.map(t => (
+          {(usuario?.rol === 'superadmin' ? TABS_ADMIN : TABS_BASE).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ background:tab===t?C.accent:"transparent", color:tab===t?"#fff":C.muted, border:"none", borderRadius:8, padding:"7px 20px", cursor:"pointer", fontWeight:600, fontSize:13 }}>{t}</button>
           ))}
         </div>
@@ -484,6 +486,9 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
         {/* ── TÉCNICOS */}
         {tab === "Técnicos" && <PanelTecnicos />}
       </div>
+
+        {/* ── USUARIOS */}
+        {tab === "Usuarios" && <PanelUsuarios usuarioActual={usuario} />}
 
       {/* Solicitar orden */}
       {solicitando && <FormOrdenAdmin usuario={usuario} onCerrar={() => setSol(false)} onExito={() => { setSol(false); cargar(); }} />}
