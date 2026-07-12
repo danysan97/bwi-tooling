@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 import ImprimirOrden from "./ImprimirOrden.jsx";
 import PanelTecnicos from "./PanelTecnicos.jsx";
 import PanelUsuarios from "./PanelUsuarios.jsx";
+import ExportarReportes from "./ExportarReportes.jsx";
 import FormOrdenAdmin from "./FormOrdenAdmin.jsx";
 import {
   supabase,
@@ -16,6 +17,7 @@ const C = {
   bg:"#0F1117", surface:"#181C25", border:"#242935",
   accent:"#3B82F6", success:"#22C55E", warn:"#F59E0B",
   danger:"#EF4444", muted:"#6B7280", text:"#F1F5F9", textSub:"#94A3B8",
+  purple:"#8B5CF6",
 };
 const PRIO_COLOR = { "1_seguridad":C.danger,"2_queja_cliente":C.warn,"3_maquina_parada":"#F97316","4_trabajo_rapido":C.accent,"5_fabricacion":C.muted };
 const PRIO_LABEL = { "1_seguridad":"1·Seguridad","2_queja_cliente":"2·Queja","3_maquina_parada":"3·Máq.parada","4_trabajo_rapido":"4·Rápido","5_fabricacion":"5·Fabricación" };
@@ -294,6 +296,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
   const [busqueda, setBusq]   = useState("");
   const [ordenSel, setOS]     = useState(null);
   const [solicitando, setSol] = useState(false);
+  const [exportando, setExp]  = useState(false);
 
   const cargar = async () => {
     setLoad(true);
@@ -358,6 +361,9 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ color:C.muted, fontSize:12 }}>{usuario?.nombre_completo}</span>
+            <button onClick={() => setExp(true)} style={{ background:C.purple??"#8B5CF6", color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+              📊 Exportar
+            </button>
             <button onClick={() => setSol(true)} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700 }}>
               + Solicitar orden
             </button>
@@ -489,6 +495,8 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
 
         {/* ── USUARIOS */}
         {tab === "Usuarios" && <PanelUsuarios usuarioActual={usuario} />}
+
+      {exportando && <ExportarReportes onCerrar={() => setExp(false)} />}
 
       {/* Solicitar orden */}
       {solicitando && <FormOrdenAdmin usuario={usuario} onCerrar={() => setSol(false)} onExito={() => { setSol(false); cargar(); }} />}
