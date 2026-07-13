@@ -111,6 +111,7 @@ function FormOrden({ usuario, onExito, onCancelar }) {
     nombre_pieza:"", setc_numero:"", no_plano:"", no_maquina:"",
     cantidad:"", descripcion:"", prioridad:"",
     depto: usuario.departamento || "",
+    linea_celda: "",
     area_sel: usuario.area_codigo || "",
   });
 
@@ -145,6 +146,7 @@ function FormOrden({ usuario, onExito, onCancelar }) {
     const { data, error } = await crearOrden({
       solicitante_id: usuario.id,
       nombre_pieza:   form.nombre_pieza,
+      linea_celda:    form.linea_celda  || null,
       setc_numero:    form.setc_numero,
       no_plano:       form.no_plano,
       no_maquina:     form.no_maquina,
@@ -198,15 +200,11 @@ function FormOrden({ usuario, onExito, onCancelar }) {
             <Row>
               <div>
                 <Label>Área</Label>
-                {esNombreGenerico ? (
-                  <select value={form.area_sel} onChange={e => set("area_sel", e.target.value)}
-                    style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 14px", color:C.text, fontSize:14, outline:"none", cursor:"pointer" }}>
-                    <option value="">— Seleccionar —</option>
-                    {areas.map(a => <option key={a.codigo} value={a.codigo}>{a.codigo} · {a.nombre}</option>)}
-                  </select>
-                ) : (
-                  <Input value={areas.find(a=>a.codigo===usuario.area_codigo)?.nombre ?? "—"} disabled style={{ color:C.muted }} />
-                )}
+                <select value={form.area_sel} onChange={e => set("area_sel", e.target.value)}
+                  style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 14px", color:C.text, fontSize:14, outline:"none", cursor:"pointer" }}>
+                  <option value="">— Seleccionar —</option>
+                  {areas.map(a => <option key={a.codigo} value={a.codigo}>{a.codigo} · {a.nombre}</option>)}
+                </select>
               </div>
               <div>
                 <Label required>Departamento</Label>
@@ -214,6 +212,10 @@ function FormOrden({ usuario, onExito, onCancelar }) {
                 <ErrMsg msg={errores.depto} />
               </div>
             </Row>
+            <div style={{ marginBottom:14 }}>
+              <Label>Línea / Celda</Label>
+              <Input placeholder="Ej. Línea 3, Celda 10, Shooter…" value={form.linea_celda} onChange={e => set("linea_celda", e.target.value)} />
+            </div>
           </Section>
 
           <Section title="Datos de la pieza">

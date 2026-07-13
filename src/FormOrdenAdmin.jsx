@@ -52,7 +52,7 @@ export default function FormOrdenAdmin({ usuario, onCerrar, onExito }) {
 
   const [form, setForm] = useState({
     nombre_pieza:"", setc_numero:"", no_plano:"", no_maquina:"",
-    cantidad:"", descripcion:"", prioridad:"",
+    cantidad:"", descripcion:"", prioridad:"", linea_celda:"",
     depto: usuario.departamento || "",
     area_sel: usuario.area_codigo || "",
   });
@@ -78,6 +78,7 @@ export default function FormOrdenAdmin({ usuario, onCerrar, onExito }) {
     const { data, error } = await crearOrden({
       solicitante_id: usuario.id,
       nombre_pieza:   form.nombre_pieza,
+      linea_celda:    form.linea_celda  || null,
       setc_numero:    form.setc_numero  || null,
       no_plano:       form.no_plano     || null,
       no_maquina:     form.no_maquina   || null,
@@ -122,6 +123,11 @@ export default function FormOrdenAdmin({ usuario, onCerrar, onExito }) {
         ) : (
           <div style={{ padding:"24px" }}>
             {errores._global && <div style={{ background:C.danger+"18", border:`1px solid ${C.danger}44`, borderRadius:8, padding:"10px 14px", color:C.danger, marginBottom:20, fontSize:13 }}>{errores._global}</div>}
+
+            <div style={{ marginBottom:14 }}>
+              <Label>Línea / Celda</Label>
+              <Input placeholder="Ej. Línea 3, Celda 10, Shooter…" value={form.linea_celda} onChange={e => set("linea_celda", e.target.value)} />
+            </div>
 
             <Section title="Datos de la pieza">
               <div style={{ marginBottom:14 }}>
