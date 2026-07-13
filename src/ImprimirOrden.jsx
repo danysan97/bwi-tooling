@@ -143,9 +143,10 @@ export default function ImprimirOrden({ orden, onCerrar }) {
               <Campo label="Cantidad" value={orden.cantidad} flex={1} />
             </Fila>
 
-            {/* Fila 4: No. máquina */}
+            {/* Fila 4: No. máquina + Línea/Celda */}
             <Fila>
-              <Campo label="No. de máquina / Fixtura / Equipo" value={orden.no_maquina} flex={4} />
+              <Campo label="No. de máquina / Fixtura / Equipo" value={orden.no_maquina} flex={3} />
+              <Campo label="Línea / Celda" value={orden.linea_celda} flex={2} />
               <div style={{ flex:4, padding:"4px 8px", borderRight:`1px solid ${GRAY_BORDER}` }}>
                 <div style={{ fontSize:7, color:"#666", textTransform:"uppercase", letterSpacing:0.5 }}>Autorización urgencia</div>
                 <div style={{ fontSize:11, minHeight:16, marginTop:2 }}>{orden.autorizada === true ? "✅ AUTORIZADA" : orden.autorizada === false ? "❌ RECHAZADA" : "___________________________"}</div>

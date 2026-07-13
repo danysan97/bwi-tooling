@@ -157,6 +157,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               ["S.E.T.C. #", orden.setc_numero || "—"],
               ["No. plano", orden.no_plano || "—"],
               ["No. máquina", orden.no_maquina || "—"],
+              ["Línea / Celda", orden.linea_celda || "—"],
               ["Departamento", orden.departamento || "—"],
               ["Técnico asignado", orden.tecnico_nombre || "Sin asignar"],
               ["Material", orden.material_usado || "—"],
