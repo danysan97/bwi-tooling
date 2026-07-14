@@ -356,18 +356,6 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               </Select>
             </div>
 
-            )}
-
-            <div>
-              <Label>Nuevo estado</Label>
-              <Select value={estado} onChange={e => setEstado(e.target.value)}>
-                <option value="nueva_orden">Nueva orden</option>
-                <option value="en_proceso">En proceso</option>
-                <option value="terminada">Terminada</option>
-                <option value="cancelada">Cancelada</option>
-              </Select>
-            </div>
-
             {/* Confirmación entregada — aparece cuando presionas "Actualizar estado" con "terminada" */}
             {confirmandoEntrega && (
               <div style={{ display:"flex", gap:8, alignItems:"center", justifyContent:"center", padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10 }}>
