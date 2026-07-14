@@ -93,6 +93,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setEstado(orden.estado);
     setComent("");
     setMsg("");
+    setNuevoComent("");
     cargarSeguimiento(orden.no_orden).then(({ data }) => {
       if (data?.length) {
         setTecSeg(data.map(s => ({
@@ -107,6 +108,9 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
         setComentSeg(data[0]?.comentarios ?? "");
       } else {
         setTecSeg([{ id: null, tecnico_id: "", fecha_inicio: "", fecha_termino: "", tiempo_real_hrs: "" }]);
+        setMatId("");
+        setMatOtro("");
+        setComentSeg("");
       }
     });
     cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []));
@@ -138,6 +142,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const guardarSeg = async () => {
     const tecValidos = tecnicosSeg.filter(t => t.tecnico_id);
     if (!tecValidos.length) { setMsg("Asigna al menos un técnico."); return; }
+    if (!materialId && !materialOtro) { setMsg("Selecciona un material."); return; }
     setG(true);
     const { error } = await guardarSeguimiento(orden.no_orden, tecValidos, comentarios, materialId, materialOtro, usuario.id);
     setG(false);
@@ -653,7 +658,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
       {solicitando && <FormOrdenAdmin usuario={usuario} onCerrar={() => setSol(false)} onExito={() => { setSol(false); cargar(); }} />}
 
       {/* Modal */}
-      <ModalOrden orden={ordenSel} onClose={() => setOS(null)} onActualizado={() => { cargar(); setOS(null); }} usuario={usuario} tecnicos={tecnicos} materiales={materiales} />
+      <ModalOrden orden={ordenSel} onClose={() => setOS(null)} onActualizado={() => cargar()} usuario={usuario} tecnicos={tecnicos} materiales={materiales} />
     </div>
   );
 }
