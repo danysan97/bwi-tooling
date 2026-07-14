@@ -87,6 +87,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const [imprimiendo, setImp] = useState(false);
   const [historial, setHistorial] = useState([]);
   const [nuevoComentario, setNuevoComent] = useState("");
+  const [confirmandoEntrega, setConfEntrega] = useState(false);
 
   useEffect(() => {
     if (!orden) return;
@@ -94,6 +95,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setComent("");
     setMsg("");
     setNuevoComent("");
+    setConfEntrega(false);
     cargarSeguimiento(orden.no_orden).then(({ data }) => {
       if (data?.length) {
         setTecSeg(data.map(s => ({
@@ -359,17 +361,24 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                   <div style={{ color:C.text, fontWeight:600, fontSize:14 }}>¡Trabajo entregado!</div>
                   <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>Marca cuando el solicitante recoja la pieza</div>
                 </div>
-                <button onClick={async () => {
-                  setG(true);
-                  const nuevo = !orden.entregada;
-                  await supabase.from("ordenes_trabajo").update({ entregada: nuevo }).eq("no_orden", orden.no_orden);
-                  await registrarEvento(orden.no_orden, 'entrega', nuevo ? "Trabajo entregado al solicitante." : "Se desmarcó entrega.", usuario.id);
-                  setG(false);
-                  setMsg(nuevo ? "Marcada como entregada." : "Desmarcada como entregada.");
-                  onActualizado();
-                }} disabled={guardando} style={{ background:orden.entregada?C.purple:C.border, color:orden.entregada?"#fff":C.muted, border:"none", borderRadius:8, padding:"8px 18px", cursor:"pointer", fontWeight:700, fontSize:13, minWidth:100 }}>
-                  {orden.entregada ? "✅ Entregada" : "Actualizar estado"}
-                </button>
+                {!confirmandoEntrega ? (
+                  <button onClick={() => setConfEntrega(true)} disabled={guardando || orden.entregada} style={{ background:orden.entregada?C.purple:C.border, color:orden.entregada?"#fff":C.muted, border:"none", borderRadius:8, padding:"8px 18px", cursor:orden.entregada?"default":"pointer", fontWeight:700, fontSize:13, minWidth:100 }}>
+                    {orden.entregada ? "✅ Entregada" : "Actualizar estado"}
+                  </button>
+                ) : (
+                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                    <span style={{ color:C.text, fontSize:13, fontWeight:600 }}>📦 ¿Trabajo entregado?</span>
+                    <button onClick={async () => {
+                      setG(true);
+                      await supabase.from("ordenes_trabajo").update({ entregada: true }).eq("no_orden", orden.no_orden);
+                      await registrarEvento(orden.no_orden, 'entrega', "Trabajo entregado al solicitante.", usuario.id);
+                      setG(false);
+                      onActualizado();
+                      onClose();
+                    }} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✓</button>
+                    <button onClick={() => setConfEntrega(false)} disabled={guardando} style={{ background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✕</button>
+                  </div>
+                )}
               </div>
             )}
             {estado === "en_proceso" && (
