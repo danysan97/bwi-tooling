@@ -166,6 +166,7 @@ export async function crearOrden(datos, archivo = null) {
     setc_numero:      datos.setc_numero    || null,
     no_plano:         datos.no_plano       || null,
     no_maquina:       datos.no_maquina     || null,
+    linea_celda:      datos.linea_celda    || null,
     cantidad:         Number(datos.cantidad),
     descripcion:      datos.descripcion,
     prioridad:        datos.prioridad,
