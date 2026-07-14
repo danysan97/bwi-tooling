@@ -132,6 +132,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
 
   const guardarEstado = async () => {
     if (estado === "terminada") { setConfEntrega(true); return; }
+    if (estado === "en_proceso" && !orden.fecha_inicio) { setMsg("Pon la fecha de inicio antes de cambiar a En proceso."); return; }
     setG(true);
     const { error } = await actualizarEstado(orden.no_orden, estado, usuario.id, coment || null);
     setG(false);
