@@ -362,8 +362,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                   <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>Marca cuando el solicitante recoja la pieza</div>
                 </div>
                 {!confirmandoEntrega ? (
-                  <button onClick={() => setConfEntrega(true)} disabled={guardando || orden.entregada} style={{ background:orden.entregada?C.purple:C.border, color:orden.entregada?"#fff":C.muted, border:"none", borderRadius:8, padding:"8px 18px", cursor:orden.entregada?"default":"pointer", fontWeight:700, fontSize:13, minWidth:100 }}>
-                    {orden.entregada ? "✅ Entregada" : "Actualizar estado"}
+                  <button onClick={() => setConfEntrega(true)} disabled={guardando || orden.entregada} style={{ background:orden.entregada?C.purple:C.accent+"22", color:orden.entregada?"#fff":C.accent, border:`1px solid ${orden.entregada?C.purple:C.accent}55`, borderRadius:8, padding:"8px 18px", cursor:orden.entregada?"default":"pointer", fontWeight:700, fontSize:13, minWidth:100 }}>
+                    {orden.entregada ? "✅ Entregada" : "¿Entregado?"}
                   </button>
                 ) : (
                   <div style={{ display:"flex", gap:8, alignItems:"center" }}>
