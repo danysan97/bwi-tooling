@@ -667,7 +667,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
       {solicitando && <FormOrdenAdmin usuario={usuario} onCerrar={() => setSol(false)} onExito={() => { setSol(false); cargar(); }} />}
 
       {/* Modal */}
-      <ModalOrden orden={ordenSel} onClose={() => setOS(null)} onActualizado={() => cargar()} usuario={usuario} tecnicos={tecnicos} materiales={materiales} />
+      <ModalOrden orden={ordenSel} onClose={() => setOS(null)} onActualizado={async () => { const no = ordenSel?.no_orden; await cargar(); if (no) { const { data } = await supabase.from("vista_ordenes").select("*").eq("no_orden", no).single(); if (data) setOS(data); } }} usuario={usuario} tecnicos={tecnicos} materiales={materiales} />
     </div>
   );
 }
