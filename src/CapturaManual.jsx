@@ -481,7 +481,7 @@ export default function App({ onVolver }) {
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ width:6, height:26, background:C.warn, borderRadius:3 }} />
             <div>
-              <div style={{ fontWeight:800, fontSize:15 }}>BWI — Tooling</div>
+              <div style={{ fontWeight:800, fontSize:15 }}>BWI — TOOLROOM</div>
               <div style={{ color:C.muted, fontSize:11 }}>Captura de órdenes manuales</div>
             </div>
           </div>

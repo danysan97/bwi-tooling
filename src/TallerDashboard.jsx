@@ -357,7 +357,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
         <div style={{ maxWidth:1280, margin:"0 auto", display:"flex", alignItems:"center", justifyContent:"space-between", height:54 }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ width:6, height:26, background:C.accent, borderRadius:3 }} />
-            <span style={{ fontWeight:800, fontSize:15 }}>BWI — Tooling</span>
+            <span style={{ fontWeight:800, fontSize:15 }}>BWI — TOOLROOM</span>
             <span style={{ color:C.muted, fontSize:12 }}>Panel de administración</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>

@@ -56,7 +56,7 @@ function PantallaLogin({ onLogin }) {
         <div style={{ textAlign:"center", marginBottom:32 }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, marginBottom:8 }}>
             <div style={{ width:5, height:32, background:C.accent, borderRadius:3 }} />
-            <span style={{ fontSize:22, fontWeight:800, color:C.text }}>BWI — Tooling</span>
+            <span style={{ fontSize:22, fontWeight:800, color:C.text }}>BWI — TOOLROOM</span>
           </div>
           <div style={{ color:C.muted, fontSize:13 }}>Portal de Órdenes de Trabajo</div>
         </div>

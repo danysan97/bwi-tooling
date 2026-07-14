@@ -49,7 +49,7 @@ const Logo = () => (
   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
     <div style={{ width:5, height:28, background:C.accent, borderRadius:3 }} />
     <div>
-      <div style={{ fontWeight:800, fontSize:16, color:C.text }}>BWI — Tooling</div>
+      <div style={{ fontWeight:800, fontSize:16, color:C.text }}>BWI — TOOLROOM</div>
       <div style={{ color:C.muted, fontSize:11 }}>Portal de Órdenes de Trabajo</div>
     </div>
   </div>
@@ -174,7 +174,7 @@ function FormOrden({ usuario, onExito, onCancelar }) {
           <button onClick={onCancelar} style={{ background:C.surface, border:`1px solid ${C.border}`, color:C.muted, borderRadius:8, padding:"8px 14px", cursor:"pointer", fontSize:14 }}>← Volver</button>
           <div>
             <div style={{ color:C.text, fontWeight:700, fontSize:18 }}>Nueva Orden de Trabajo</div>
-            <div style={{ color:C.muted, fontSize:12 }}>BWI Tooling · {usuario.no_empleado}</div>
+            <div style={{ color:C.muted, fontSize:12 }}>BWI TOOLROOM · {usuario.no_empleado}</div>
           </div>
         </div>
 
@@ -296,7 +296,7 @@ function Exito({ folio, onVolver }) {
       <div style={{ maxWidth:420, width:"100%", textAlign:"center" }}>
         <div style={{ fontSize:56, marginBottom:16 }}>✅</div>
         <div style={{ color:C.text, fontWeight:800, fontSize:24, marginBottom:8 }}>¡Orden enviada!</div>
-        <div style={{ color:C.muted, fontSize:14, marginBottom:28 }}>Tu orden fue registrada en BWI Tooling.</div>
+        <div style={{ color:C.muted, fontSize:14, marginBottom:28 }}>Tu orden fue registrada en BWI TOOLROOM.</div>
         <div style={{ background:C.surface, border:`2px solid ${C.accent}`, borderRadius:14, padding:"20px 0", marginBottom:28 }}>
           <div style={{ color:C.muted, fontSize:12, marginBottom:4 }}>NÚMERO DE ORDEN</div>
           <div style={{ color:C.accent, fontSize:42, fontWeight:900 }}>#{folio}</div>

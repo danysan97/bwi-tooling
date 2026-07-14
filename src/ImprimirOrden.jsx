@@ -54,7 +54,7 @@ export default function ImprimirOrden({ orden, onCerrar }) {
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Orden #${orden.no_orden} — BWI Tooling</title>
+        <title>Orden #${orden.no_orden} — BWI TOOLROOM</title>
         <style>
           * { margin:0; padding:0; box-sizing:border-box; }
           body { font-family: Arial, sans-serif; font-size:11px; }
@@ -103,7 +103,7 @@ export default function ImprimirOrden({ orden, onCerrar }) {
               <div style={{ fontSize:15, fontWeight:700, color:BWI_BLUE, textTransform:"uppercase", letterSpacing:1 }}>
                 ORDEN DE TRABAJO PARA TALLER
               </div>
-              <div style={{ fontSize:9, color:"#666", marginTop:2 }}>TOOLING — TALLER MÁQUINAS Y HERRAMIENTAS</div>
+              <div style={{ fontSize:9, color:"#666", marginTop:2 }}>TOOLROOM — TALLER MÁQUINAS Y HERRAMIENTAS</div>
             </div>
             <div style={{ textAlign:"right", fontSize:9, color:"#666" }}>
               <div style={{ fontWeight:700, fontSize:13, color:BWI_BLUE }}>No. Orden: #{orden.no_orden}</div>
@@ -199,7 +199,7 @@ export default function ImprimirOrden({ orden, onCerrar }) {
           {/* Pie */}
           <div style={{ display:"flex", justifyContent:"space-between", marginTop:8, fontSize:8, color:"#999" }}>
             <span>F-1100.C.03-02 Rev. 06 — Fecha de última rev.: 26 agosto 2024</span>
-            <span>BWI Group — Departamento de Tooling</span>
+            <span>BWI Group — Departamento de TOOLROOM</span>
             <span>Impreso: {new Date().toLocaleDateString("es-MX")}</span>
           </div>
 

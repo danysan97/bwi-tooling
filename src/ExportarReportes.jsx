@@ -70,7 +70,7 @@ async function exportarOrdenes(fechaInicio, fechaFin) {
 
   // Hoja resumen
   const resumen = [
-    ["REPORTE DE ÓRDENES — BWI TOOLING"],
+    ["REPORTE DE ÓRDENES — BWI TOOLROOM"],
     ["Período:", fechaInicio ? `${fechaInicio} al ${fechaFin || "hoy"}` : "Todas"],
     ["Total órdenes:", filas.length],
     ["Nuevas:", filas.filter(f => f["Estado"]==="Nueva").length],
@@ -85,7 +85,7 @@ async function exportarOrdenes(fechaInicio, fechaFin) {
   wsRes["!cols"] = [{wch:30},{wch:20}];
   XLSX.utils.book_append_sheet(wb, wsRes, "Resumen");
 
-  const nombre = `BWI_Tooling_Ordenes_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const nombre = `BWI_TOOLROOM_Ordenes_${new Date().toISOString().slice(0,10)}.xlsx`;
   XLSX.writeFile(wb, nombre);
   return { ok: true, msg: `${filas.length} órdenes exportadas.` };
 }
@@ -159,7 +159,7 @@ async function exportarTecnicos(fechaInicio, fechaFin) {
   ws2["!cols"] = [{wch:32},{wch:10},{wch:30},{wch:28},{wch:20},{wch:14},{wch:14},{wch:14},{wch:12}];
   XLSX.utils.book_append_sheet(wb, ws2, "Detalle por Técnico");
 
-  const nombre = `BWI_Tooling_Tecnicos_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const nombre = `BWI_TOOLROOM_Tecnicos_${new Date().toISOString().slice(0,10)}.xlsx`;
   XLSX.writeFile(wb, nombre);
   return { ok: true, msg: `Reporte de ${tecs.length} técnicos exportado.` };
 }
