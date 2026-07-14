@@ -93,7 +93,6 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     if (!orden) return;
     setEstado(orden.estado);
     setComent("");
-    setMsg("");
     setNuevoComent("");
     setConfEntrega(false);
     cargarSeguimiento(orden.no_orden).then(({ data }) => {
