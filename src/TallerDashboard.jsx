@@ -138,8 +138,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     const tecValidos = tecnicosSeg.filter(t => t.tecnico_id);
     if (!tecValidos.length) { setMsg("Asigna al menos un técnico."); return; }
     if (!materialId && !materialOtro) { setMsg("Selecciona un material."); return; }
-    const sinHoras = tecValidos.filter(t => t.fecha_termino && !t.tiempo_real_hrs);
-    if (sinHoras.length) { setMsg("Pon las horas reales a todos los técnicos con fecha de término antes de guardar."); return; }
+    const sinHoras = tecValidos.filter(t => !t.tiempo_real_hrs);
+    if (sinHoras.length) { setMsg("Pon las horas reales a todos los técnicos antes de guardar."); return; }
     setG(true);
     const { error } = await guardarSeguimiento(orden.no_orden, tecValidos, comentarios, materialId, materialOtro, usuario.id);
     if (error) { setG(false); setMsg("Error al guardar."); return; }
