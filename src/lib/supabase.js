@@ -304,12 +304,12 @@ export async function guardarSeguimiento(no_orden, tecnicos, comentarios, materi
   const prevMatOtro  = existentes?.[0]?.material_otro ?? null
   const prevComent   = existentes?.[0]?.comentarios ?? null
 
-  if ((material_id || material_otro) && (material_id !== prevMaterial || material_otro !== prevMatOtro)) {
+  if ((material_id || material_otro) && (String(material_id) !== String(prevMaterial ?? '') || material_otro !== prevMatOtro)) {
     const nombreMat = material_otro || (((await supabase.from('materiales').select('nombre').eq('id', material_id).maybeSingle()).data?.nombre) ?? material_id)
     await registrarEvento(no_orden, 'material', `Material registrado: ${nombreMat}.`, actualizado_por_id)
   }
 
-  if (comentarios && comentarios !== prevComent) {
+  if (comentarios && String(comentarios) !== String(prevComent ?? '')) {
     await registrarEvento(no_orden, 'comentario', comentarios, actualizado_por_id)
   }
 
