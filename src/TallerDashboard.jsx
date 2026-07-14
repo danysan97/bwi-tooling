@@ -131,8 +131,11 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   };
 
   const guardarEstado = async () => {
-    if (estado === "en_proceso" && !orden.fecha_inicio) { setMsg("Pon la fecha de inicio antes de cambiar a En proceso."); return; }
+    const tieneFechaInicio = tecSeg.some(t => t.fecha_inicio);
+    const tieneFechaTermino = tecSeg.some(t => t.fecha_termino);
+    if (estado === "en_proceso" && !tieneFechaInicio) { setMsg("Pon la fecha de inicio en el tab Seguimiento antes de cambiar a En proceso."); return; }
     if (estado === "terminada" && orden.estado !== "en_proceso") { setMsg("La orden debe estar En proceso antes de marcar Terminada."); return; }
+    if (estado === "terminada" && !tieneFechaTermino) { setMsg("Pon la fecha de término en el tab Seguimiento antes de marcar Terminada."); return; }
     if (estado === "terminada") { setConfEntrega(true); return; }
     setG(true);
     const { error } = await actualizarEstado(orden.no_orden, estado, usuario.id, coment || null);
@@ -372,7 +375,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                   setConfEntrega(false);
                   onActualizado();
                   onClose();
-                }} disabled={guardando || !orden.fecha_termino} title={!orden.fecha_termino?"Pon fecha de término primero":""} style={{ background:orden.fecha_termino?C.success:C.muted, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:orden.fecha_termino?"pointer":"not-allowed", fontWeight:700, fontSize:13 }}>✓</button>
+                }} disabled={guardando || !tecSeg.some(t => t.fecha_termino)} title={!tecSeg.some(t => t.fecha_termino)?"Pon fecha de término en Seguimiento primero":""} style={{ background:tecSeg.some(t => t.fecha_termino)?C.success:C.muted, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:tecSeg.some(t => t.fecha_termino)?"pointer":"not-allowed", fontWeight:700, fontSize:13 }}>✓</button>
                 <button onClick={async () => {
                   setG(true);
                   await actualizarEstado(orden.no_orden, "terminada", usuario.id, null);
