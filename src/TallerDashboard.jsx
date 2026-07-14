@@ -131,6 +131,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   };
 
   const guardarEstado = async () => {
+    if (estado === "terminada") { setConfEntrega(true); return; }
     setG(true);
     const { error } = await actualizarEstado(orden.no_orden, estado, usuario.id, coment || null);
     setG(false);
@@ -354,31 +355,42 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               </Select>
             </div>
 
-            {/* Toggle entregada — solo cuando está terminada con fecha de término */}
-            {estado === "terminada" && orden.fecha_termino && (
-              <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", background:orden.entregada?C.purple+"18":C.bg, border:`1px solid ${orden.entregada?C.purple:C.border}`, borderRadius:10 }}>
-                <div style={{ flex:1 }}>
-                  <div style={{ color:C.text, fontWeight:600, fontSize:14 }}>¡Trabajo entregado!</div>
-                  <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>Marca cuando el solicitante recoja la pieza</div>
-                </div>
-                {!confirmandoEntrega ? (
-                  <button onClick={() => setConfEntrega(true)} disabled={guardando || orden.entregada} style={{ background:orden.entregada?C.purple:C.accent+"22", color:orden.entregada?"#fff":C.accent, border:`1px solid ${orden.entregada?C.purple:C.accent}55`, borderRadius:8, padding:"8px 18px", cursor:orden.entregada?"default":"pointer", fontWeight:700, fontSize:13, minWidth:100 }}>
-                    {orden.entregada ? "✅ Entregada" : "¿Entregado?"}
-                  </button>
-                ) : (
-                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                    <span style={{ color:C.text, fontSize:13, fontWeight:600 }}>📦 ¿Trabajo entregado?</span>
-                    <button onClick={async () => {
-                      setG(true);
-                      await supabase.from("ordenes_trabajo").update({ entregada: true }).eq("no_orden", orden.no_orden);
-                      await registrarEvento(orden.no_orden, 'entrega', "Trabajo entregado al solicitante.", usuario.id);
-                      setG(false);
-                      onActualizado();
-                      onClose();
-                    }} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✓</button>
-                    <button onClick={() => setConfEntrega(false)} disabled={guardando} style={{ background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✕</button>
-                  </div>
-                )}
+            )}
+
+            <div>
+              <Label>Nuevo estado</Label>
+              <Select value={estado} onChange={e => setEstado(e.target.value)}>
+                <option value="nueva_orden">Nueva orden</option>
+                <option value="en_proceso">En proceso</option>
+                <option value="terminada">Terminada</option>
+                <option value="cancelada">Cancelada</option>
+              </Select>
+            </div>
+
+            {/* Confirmación entregada — aparece cuando presionas "Actualizar estado" con "terminada" */}
+            {confirmandoEntrega && (
+              <div style={{ display:"flex", gap:8, alignItems:"center", justifyContent:"center", padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10 }}>
+                <span style={{ color:C.text, fontSize:14, fontWeight:600 }}>📦 ¿Trabajo entregado?</span>
+                <button onClick={async () => {
+                  setG(true);
+                  const { error } = await actualizarEstado(orden.no_orden, "terminada", usuario.id, null);
+                  if (!error) {
+                    await supabase.from("ordenes_trabajo").update({ entregada: true }).eq("no_orden", orden.no_orden);
+                    await registrarEvento(orden.no_orden, 'entrega', "Trabajo entregado al solicitante.", usuario.id);
+                  }
+                  setG(false);
+                  setConfEntrega(false);
+                  onActualizado();
+                  onClose();
+                }} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✓</button>
+                <button onClick={async () => {
+                  setG(true);
+                  await actualizarEstado(orden.no_orden, "terminada", usuario.id, null);
+                  setG(false);
+                  setConfEntrega(false);
+                  setMsg("Estado actualizado."); onActualizado();
+                  setTimeout(() => setMsg(""), 2000);
+                }} disabled={guardando} style={{ background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✕</button>
               </div>
             )}
             <div style={{ display:"flex", gap:8 }}>
