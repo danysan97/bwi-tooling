@@ -91,6 +91,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   useEffect(() => {
     if (!orden) return;
     setEstado(orden.estado);
+    setComent("");
+    setMsg("");
     cargarSeguimiento(orden.no_orden).then(({ data }) => {
       if (data?.length) {
         setTecSeg(data.map(s => ({
