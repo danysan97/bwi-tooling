@@ -45,8 +45,8 @@ const PRIO_LABEL = {
   "1_seguridad":"Seguridad","2_queja_cliente":"Queja","3_maquina_parada":"Máq. parada",
   "4_trabajo_rapido":"Rápido","5_fabricacion":"Fabricación"
 };
-const EST_COLOR = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted, entregada:C.purple };
-const EST_LABEL = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada", entregada:"Entregada" };
+const EST_COLOR = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted };
+const EST_LABEL = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada" };
 
 // ── Semana actual ────────────────────────────────────────────
 function getSemanaActual() {
@@ -73,7 +73,7 @@ function HistorialTecnico({ tecnico, onVolver }) {
   useEffect(() => {
     supabase
       .from("seguimiento_orden")
-      .select("id, fecha_inicio, fecha_termino, tiempo_real_hrs, comentarios, orden_id, ordenes_trabajo(no_orden, nombre_pieza, estado, prioridad, fecha_solicitud)")
+      .select("id, fecha_inicio, fecha_termino, tiempo_real_hrs, comentarios, orden_id, ordenes_trabajo(no_orden, nombre_pieza, estado, prioridad, fecha_solicitud, entregada)")
       .eq("tecnico_id", tecnico.id)
       .order("fecha_registro", { ascending: false })
       .then(({ data, error }) => {
@@ -83,7 +83,7 @@ function HistorialTecnico({ tecnico, onVolver }) {
       });
   }, [tecnico.id]);
 
-  const filtradas = filtro === "todas" ? ordenes : ordenes.filter(o => o.ordenes_trabajo?.estado === filtro);
+  const filtradas = filtro === "todas" ? ordenes : filtro === "entregadas" ? ordenes.filter(o => o.ordenes_trabajo?.estado === "terminada" && o.ordenes_trabajo?.entregada) : ordenes.filter(o => o.ordenes_trabajo?.estado === filtro);
 
   const totalHrs  = ordenes.reduce((s, o) => s + (Number(o.tiempo_real_hrs) || 0), 0);
   const terminadas = ordenes.filter(o => o.ordenes_trabajo?.estado === "terminada").length;
@@ -119,14 +119,14 @@ function HistorialTecnico({ tecnico, onVolver }) {
 
         {/* Filtros */}
         <div style={{ padding:"12px 20px", borderBottom:`1px solid ${C.border}`, display:"flex", gap:8, flexWrap:"wrap" }}>
-          {["todas","nueva_orden","en_proceso","terminada","entregada","cancelada"].map(f => (
+          {["todas","nueva_orden","en_proceso","terminada","entregadas","cancelada"].map(f => (
             <button key={f} onClick={() => setFiltro(f)} style={{
-              background: filtro===f ? (EST_COLOR[f]||C.accent)+"22" : "transparent",
-              color:       filtro===f ? (EST_COLOR[f]||C.accent) : C.muted,
-              border:     `1px solid ${filtro===f ? (EST_COLOR[f]||C.accent) : C.border}`,
+              background: filtro===f ? (f==="entregadas"?C.purple:(EST_COLOR[f]||C.accent))+"22" : "transparent",
+              color:       filtro===f ? (f==="entregadas"?C.purple:(EST_COLOR[f]||C.accent)) : C.muted,
+              border:     `1px solid ${filtro===f ? (f==="entregadas"?C.purple:(EST_COLOR[f]||C.accent)) : C.border}`,
               borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:600,
             }}>
-              {{ todas:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregada:"Entregadas",cancelada:"Canceladas" }[f]}
+              {{ todas:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregadas:"Entregadas",cancelada:"Canceladas" }[f]}
             </button>
           ))}
         </div>

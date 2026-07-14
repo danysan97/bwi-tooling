@@ -21,15 +21,18 @@ const C = {
 };
 const PRIO_COLOR = { "1_seguridad":C.danger,"2_queja_cliente":C.warn,"3_maquina_parada":"#F97316","4_trabajo_rapido":C.accent,"5_fabricacion":C.muted };
 const PRIO_LABEL = { "1_seguridad":"1·Seguridad","2_queja_cliente":"2·Queja","3_maquina_parada":"3·Máq.parada","4_trabajo_rapido":"4·Rápido","5_fabricacion":"5·Fabricación" };
-const EST_COLOR  = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted, entregada:C.purple };
-const EST_LABEL  = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada", entregada:"Entregada" };
+const EST_COLOR  = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted };
+const EST_LABEL  = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada" };
 
 const Card = ({ children, style={} }) => (
   <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"20px 24px", ...style }}>{children}</div>
 );
-const Badge = ({ estado }) => (
-  <span style={{ background:EST_COLOR[estado]+"22", color:EST_COLOR[estado], border:`1px solid ${EST_COLOR[estado]}55`, borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{EST_LABEL[estado]}</span>
-);
+const Badge = ({ estado, entregada }) => {
+  const isEnt = estado === "terminada" && entregada;
+  const c = isEnt ? C.purple : EST_COLOR[estado];
+  const l = isEnt ? "Entregada" : EST_LABEL[estado];
+  return <span style={{ background:c+"22", color:c, border:`1px solid ${c}55`, borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{l}</span>;
+};
 const PrioBadge = ({ p }) => (
   <span style={{ background:PRIO_COLOR[p]+"22", color:PRIO_COLOR[p], border:`1px solid ${PRIO_COLOR[p]}55`, borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{PRIO_LABEL[p]}</span>
 );
@@ -311,9 +314,29 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 <option value="nueva_orden">Nueva orden</option>
                 <option value="en_proceso">En proceso</option>
                 <option value="terminada">Terminada</option>
-                <option value="entregada">Entregada</option>
                 <option value="cancelada">Cancelada</option>
               </Select>
+            </div>
+
+            {/* Toggle entregada — solo cuando está terminada */}
+            {estado === "terminada" && (
+              <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", background:orden.entregada?C.purple+"18":C.bg, border:`1px solid ${orden.entregada?C.purple:C.border}`, borderRadius:10 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ color:C.text, fontWeight:600, fontSize:14 }}>📦 ¿Trabajo entregado?</div>
+                  <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>Marca cuando el solicitante recoja la pieza</div>
+                </div>
+                <button onClick={async () => {
+                  setG(true);
+                  const nuevo = !orden.entregada;
+                  await supabase.from("ordenes_trabajo").update({ entregada: nuevo }).eq("no_orden", orden.no_orden);
+                  setG(false);
+                  setMsg(nuevo ? "Marcada como entregada." : "Desmarcada como entregada.");
+                  onActualizado();
+                }} disabled={guardando} style={{ background:orden.entregada?C.purple:C.border, color:orden.entregada?"#fff":C.muted, border:"none", borderRadius:8, padding:"8px 18px", cursor:"pointer", fontWeight:700, fontSize:13, minWidth:100 }}>
+                  {orden.entregada ? "✅ Entregada" : "Marcar"}
+                </button>
+              </div>
+            )}
             </div>
             <div><Label>Comentario (opcional)</Label><Textarea rows={2} placeholder="Motivo del cambio…" value={coment} onChange={e => setComent(e.target.value)} /></div>
             {msg && <div style={{ color:C.success, fontSize:13 }}>{msg}</div>}
@@ -367,7 +390,8 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
   useEffect(() => { cargar(); }, []);
 
   const filtradas = ordenes.filter(o => {
-    const matchEst = filtroEst === "todos" || o.estado === filtroEst;
+    let matchEst = filtroEst === "todos" || o.estado === filtroEst;
+    if (filtroEst === "entregadas") matchEst = o.estado === "terminada" && o.entregada;
     const q = busqueda.toLowerCase();
     const matchQ = !q || String(o.no_orden).includes(q) || o.nombre_pieza?.toLowerCase().includes(q) || o.solicitante_nombre?.toLowerCase().includes(q) || o.area_nombre?.toLowerCase().includes(q);
     return matchEst && matchQ;
@@ -378,18 +402,17 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
     nuevas:     ordenes.filter(o => o.estado === "nueva_orden").length,
     proceso:    ordenes.filter(o => o.estado === "en_proceso").length,
     terminadas: ordenes.filter(o => o.estado === "terminada").length,
-    entregadas: ordenes.filter(o => o.estado === "entregada").length,
+    entregadas: ordenes.filter(o => o.estado === "terminada" && o.entregada).length,
     urgentes:   ordenes.filter(o => o.prioridad === "1_seguridad" || o.prioridad === "2_queja_cliente").length,
   };
 
   const mesesMap = {};
   grafMes.forEach(r => {
     const mes = new Date(r.mes).toLocaleString("es-MX", { month:"short" });
-    if (!mesesMap[mes]) mesesMap[mes] = { mes, nuevas:0, en_proceso:0, terminadas:0, entregadas:0 };
+    if (!mesesMap[mes]) mesesMap[mes] = { mes, nuevas:0, en_proceso:0, terminadas:0 };
     if (r.estado === "nueva_orden")  mesesMap[mes].nuevas     += Number(r.total);
     if (r.estado === "en_proceso")   mesesMap[mes].en_proceso += Number(r.total);
     if (r.estado === "terminada")    mesesMap[mes].terminadas += Number(r.total);
-    if (r.estado === "entregada")    mesesMap[mes].entregadas += Number(r.total);
   });
   const dataMes = Object.values(mesesMap);
 
@@ -452,9 +475,9 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
             <div style={{ padding:"14px 18px", borderBottom:`1px solid ${C.border}`, display:"flex", gap:8, flexWrap:"wrap" }}>
               <input placeholder="Folio, pieza, solicitante, área…" value={busqueda} onChange={e => setBusq(e.target.value)}
                 style={{ flex:1, minWidth:200, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
-              {["todos","nueva_orden","en_proceso","terminada","entregada","cancelada"].map(e => (
-                <button key={e} onClick={() => setFE(e)} style={{ background:filtroEst===e?(EST_COLOR[e]||C.accent)+"22":"transparent", color:filtroEst===e?(EST_COLOR[e]||C.accent):C.muted, border:`1px solid ${filtroEst===e?(EST_COLOR[e]||C.accent):C.border}`, borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
-                  {{ todos:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregada:"Entregadas",cancelada:"Canceladas" }[e]}
+              {["todos","nueva_orden","en_proceso","terminada","entregadas","cancelada"].map(e => (
+                <button key={e} onClick={() => setFE(e)} style={{ background:filtroEst===e?(e==="entregadas"?C.purple:(EST_COLOR[e]||C.accent))+"22":"transparent", color:filtroEst===e?(e==="entregadas"?C.purple:(EST_COLOR[e]||C.accent)):C.muted, border:`1px solid ${filtroEst===e?(e==="entregadas"?C.purple:(EST_COLOR[e]||C.accent)):C.border}`, borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
+                  {{ todos:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregadas:"Entregadas",cancelada:"Canceladas" }[e]}
                 </button>
               ))}
             </div>
@@ -479,7 +502,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                         <td style={{ padding:"10px 14px", color:C.textSub, maxWidth:150, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{o.area_nombre ?? o.departamento}</td>
                         <td style={{ padding:"10px 14px", fontWeight:500 }}>{o.nombre_pieza}</td>
                         <td style={{ padding:"10px 14px" }}><PrioBadge p={o.prioridad} /></td>
-                        <td style={{ padding:"10px 14px" }}><Badge estado={o.estado} /></td>
+                        <td style={{ padding:"10px 14px" }}><Badge estado={o.estado} entregada={o.entregada} /></td>
                         <td style={{ padding:"10px 14px", color:C.textSub }}>{o.tecnico_nombre ?? "—"}</td>
                         <td style={{ padding:"10px 14px", color:C.textSub }}>{o.tiempo_real_hrs ?? "—"}</td>
                       </tr>
@@ -508,9 +531,8 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                   <Legend wrapperStyle={{ color:C.muted, fontSize:12 }} />
                   <Bar dataKey="nuevas"     name="Nuevas"     fill={C.accent}  radius={[4,4,0,0]} />
                   <Bar dataKey="en_proceso" name="En proceso" fill={C.warn}    radius={[4,4,0,0]} />
-                  <Bar dataKey="terminadas" name="Terminadas" fill={C.success} radius={[4,4,0,0]} />
-                  <Bar dataKey="entregadas" name="Entregadas" fill={C.purple}  radius={[4,4,0,0]} />
-                </BarChart>
+                <Bar dataKey="terminadas" name="Terminadas" fill={C.success} radius={[4,4,0,0]} />
+              </BarChart>
               </ResponsiveContainer>
             </Card>
             <Card>

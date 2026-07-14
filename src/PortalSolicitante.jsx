@@ -16,8 +16,8 @@ const PRIORIDADES = [
   { valor:"5_fabricacion",    etiqueta:"5 — Fabricación",      desc:"Se enviará a fabricar por proveedor externo.",            color:C.muted   },
 ];
 
-const ESTADO_COLOR = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted, entregada:"#8B5CF6" };
-const ESTADO_LABEL = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada", entregada:"Entregada" };
+const ESTADO_COLOR = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted };
+const ESTADO_LABEL = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada" };
 const PRIO_COLOR   = { "1_seguridad":C.danger,"2_queja_cliente":C.warn,"3_maquina_parada":"#F97316","4_trabajo_rapido":C.accent,"5_fabricacion":C.muted };
 const PRIO_LABEL   = { "1_seguridad":"Seguridad","2_queja_cliente":"Queja","3_maquina_parada":"Máq. parada","4_trabajo_rapido":"Rápido","5_fabricacion":"Fabricación" };
 
@@ -98,7 +98,7 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
                   <div style={{ color:C.text, fontWeight:600, marginBottom:2 }}>{o.nombre_pieza}</div>
                   <div style={{ color:C.muted, fontSize:12 }}>{o.fecha_solicitud?.slice(0,10)} · Técnico: {o.tecnico_nombre ?? "Pendiente"}</div>
                 </div>
-                <span style={{ background:ESTADO_COLOR[o.estado]+"22", color:ESTADO_COLOR[o.estado], border:`1px solid ${ESTADO_COLOR[o.estado]}55`, borderRadius:8, padding:"6px 14px", fontSize:13, fontWeight:700 }}>{ESTADO_LABEL[o.estado]}</span>
+                <span style={{ background:(o.estado==="terminada"&&o.entregada?"#8B5CF6":ESTADO_COLOR[o.estado])+"22", color:o.estado==="terminada"&&o.entregada?"#8B5CF6":ESTADO_COLOR[o.estado], border:`1px solid ${(o.estado==="terminada"&&o.entregada?"#8B5CF6":ESTADO_COLOR[o.estado])}55`, borderRadius:8, padding:"6px 14px", fontSize:13, fontWeight:700 }}>{o.estado==="terminada"&&o.entregada?"Entregada":ESTADO_LABEL[o.estado]}</span>
               </div>
             ))
         }
@@ -117,7 +117,7 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
             </div>
 
             <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
-              <span style={{ background:ESTADO_COLOR[ordenSel.estado]+"22", color:ESTADO_COLOR[ordenSel.estado], border:`1px solid ${ESTADO_COLOR[ordenSel.estado]}55`, borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{ESTADO_LABEL[ordenSel.estado]}</span>
+              <span style={{ background:(ordenSel.estado==="terminada"&&ordenSel.entregada?"#8B5CF6":ESTADO_COLOR[ordenSel.estado])+"22", color:ordenSel.estado==="terminada"&&ordenSel.entregada?"#8B5CF6":ESTADO_COLOR[ordenSel.estado], border:`1px solid ${(ordenSel.estado==="terminada"&&ordenSel.entregada?"#8B5CF6":ESTADO_COLOR[ordenSel.estado])}55`, borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{ordenSel.estado==="terminada"&&ordenSel.entregada?"Entregada":ESTADO_LABEL[ordenSel.estado]}</span>
               <span style={{ background:PRIO_COLOR[ordenSel.prioridad]+"22", color:PRIO_COLOR[ordenSel.prioridad], border:`1px solid ${PRIO_COLOR[ordenSel.prioridad]}55`, borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{PRIO_LABEL[ordenSel.prioridad]}</span>
               <button onClick={() => setImp(true)} style={{ background:"#1B3A6B", color:"#fff", border:"none", borderRadius:6, padding:"2px 10px", fontSize:12, cursor:"pointer" }}>🖨️ Imprimir</button>
             </div>

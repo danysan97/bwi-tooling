@@ -203,6 +203,7 @@ CREATE TABLE ordenes_trabajo (
   autorizado_por    UUID REFERENCES usuarios(id),
   motivo_rechazo    TEXT,
   folio_queja       VARCHAR(50),
+  entregada         BOOLEAN DEFAULT FALSE,
   creado_en         TIMESTAMP DEFAULT NOW(),
   actualizado_en    TIMESTAMP DEFAULT NOW()
 );
@@ -278,6 +279,7 @@ SELECT
   o.solicitante_id,
   o.autorizada,
   o.folio_queja,
+  o.entregada,
   u.nombre_completo    AS solicitante_nombre,
   u.no_empleado        AS solicitante_empleado,
   a.nombre             AS area_nombre,

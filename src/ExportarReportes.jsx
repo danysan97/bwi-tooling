@@ -14,7 +14,7 @@ const PRIO_LABEL = {
   "5_fabricacion":"5-Fabricación",
 };
 const EST_LABEL = {
-  nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada", entregada:"Entregada"
+  nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada"
 };
 
 function formatFecha(f) {
@@ -55,6 +55,7 @@ async function exportarOrdenes(fechaInicio, fechaFin) {
     "Comentarios Taller": o.comentarios ?? "—",
     "Orden Manual":       o.es_orden_manual ? "Sí" : "No",
     "Autorizada":         o.autorizada === true ? "Sí" : o.autorizada === false ? "No" : "Pendiente",
+    "Entregada":          o.entregada ? "Sí" : "No",
   }));
 
   const wb  = XLSX.utils.book_new();
