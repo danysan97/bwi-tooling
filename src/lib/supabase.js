@@ -362,6 +362,12 @@ export async function obtenerTecnicos() {
 //  HISTORIAL DE ORDEN
 // ============================================================
 
+export function parseFechaUTC(fechaStr) {
+  if (!fechaStr) return new Date();
+  const str = fechaStr.includes("Z") || fechaStr.includes("+") ? fechaStr : fechaStr + "Z";
+  return new Date(str);
+}
+
 export async function registrarEvento(orden_id, evento_tipo, detalle = null, creado_por = null, extras = {}) {
   const payload = {
     orden_id,

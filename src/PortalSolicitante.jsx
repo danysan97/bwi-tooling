@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { crearOrden, obtenerMisOrdenes, obtenerAreas, supabase, cargarHistorial } from "./lib/supabase";
+import { crearOrden, obtenerMisOrdenes, obtenerAreas, supabase, cargarHistorial, parseFechaUTC } from "./lib/supabase";
 import ImprimirOrden from "./ImprimirOrden.jsx";
 
 const C = {
@@ -164,7 +164,7 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
                     const icon = { recepcion:"📥", asignacion:"👤", inicio:"🔧", comentario:"💬", cambio_estado:"🔄", material:"🔩", terminado:"✅", entrega:"📦" }[ev.evento_tipo] ?? "📌";
                     const color = { recepcion:C.accent, asignacion:"#60A5FA", inicio:C.warn, comentario:"#A78BFA", cambio_estado:C.success, material:"#F59E0B", terminado:C.success, entrega:C.purple }[ev.evento_tipo] ?? C.muted;
                     const label = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega" }[ev.evento_tipo] ?? ev.evento_tipo;
-                    const fecha = new Date(ev.fecha_evento);
+                    const fecha = parseFechaUTC(ev.fecha_evento);
                     return (
                       <div key={ev.id} style={{ position:"relative", marginBottom:12 }}>
                         <div style={{ position:"absolute", left:-18, top:2, width:14, height:14, borderRadius:"50%", background:color+"22", border:`2px solid ${color}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, zIndex:1 }}>{icon}</div>
