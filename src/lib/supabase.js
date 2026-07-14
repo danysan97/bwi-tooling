@@ -247,7 +247,7 @@ export async function cargarSeguimiento(no_orden) {
 
 export async function guardarSeguimiento(no_orden, tecnicos, comentarios, material_id, material_otro, actualizado_por_id) {
   const { data: existentes } = await supabase
-    .from('seguimiento_orden').select('id, tecnico_id, fecha_inicio, fecha_termino').eq('orden_id', no_orden)
+    .from('seguimiento_orden').select('id, tecnico_id, fecha_inicio, fecha_termino, material_id, material_otro, comentarios').eq('orden_id', no_orden)
 
   const existentesIds = (existentes ?? []).map(e => e.id)
   const incomingIds   = tecnicos.filter(t => t.id).map(t => t.id)
@@ -300,12 +300,16 @@ export async function guardarSeguimiento(no_orden, tecnicos, comentarios, materi
     }
   }
 
-  if (material_id || material_otro) {
+  const prevMaterial = existentes?.[0]?.material_id ?? null
+  const prevMatOtro  = existentes?.[0]?.material_otro ?? null
+  const prevComent   = existentes?.[0]?.comentarios ?? null
+
+  if ((material_id || material_otro) && (material_id !== prevMaterial || material_otro !== prevMatOtro)) {
     const nombreMat = material_otro || (((await supabase.from('materiales').select('nombre').eq('id', material_id).maybeSingle()).data?.nombre) ?? material_id)
     await registrarEvento(no_orden, 'material', `Material registrado: ${nombreMat}.`, actualizado_por_id)
   }
 
-  if (comentarios) {
+  if (comentarios && comentarios !== prevComent) {
     await registrarEvento(no_orden, 'comentario', comentarios, actualizado_por_id)
   }
 
