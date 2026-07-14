@@ -11,6 +11,7 @@ import {
   obtenerOrdenes, actualizarEstado, guardarSeguimiento, cargarSeguimiento, obtenerUrlPlano,
   datosGraficaMes, datosGraficaTecnicos, datosGraficaPrioridades,
   obtenerMateriales, obtenerTecnicos, obtenerAreas,
+  cargarHistorial, agregarComentarioHistorial, registrarEvento,
 } from "./lib/supabase";
 
 const C = {
@@ -84,6 +85,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const [guardando, setG]   = useState(false);
   const [msg, setMsg]       = useState("");
   const [imprimiendo, setImp] = useState(false);
+  const [historial, setHistorial] = useState([]);
+  const [nuevoComentario, setNuevoComent] = useState("");
 
   useEffect(() => {
     if (!orden) return;
@@ -104,6 +107,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
         setTecSeg([{ id: null, tecnico_id: "", fecha_inicio: "", fecha_termino: "", tiempo_real_hrs: "" }]);
       }
     });
+    cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []));
   }, [orden]);
 
   if (!orden) return null;
@@ -124,6 +128,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setG(false);
     if (error) { setMsg("Error al actualizar."); return; }
     setMsg("Estado actualizado."); onActualizado();
+    const { data } = await cargarHistorial(orden.no_orden);
+    setHistorial(data ?? []);
     setTimeout(() => setMsg(""), 2000);
   };
 
@@ -135,6 +141,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setG(false);
     if (error) { setMsg("Error al guardar."); return; }
     setMsg("Seguimiento guardado."); onActualizado();
+    const { data } = await cargarHistorial(orden.no_orden);
+    setHistorial(data ?? []);
     setTimeout(() => setMsg(""), 2000);
   };
 
@@ -142,6 +150,16 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     if (!orden.archivo_url) return;
     const { url } = await obtenerUrlPlano(orden.archivo_url);
     if (url) window.open(url, "_blank");
+  };
+
+  const agregarCom = async () => {
+    if (!nuevoComentario.trim()) return;
+    setG(true);
+    await agregarComentarioHistorial(orden.no_orden, nuevoComentario.trim(), usuario.id);
+    setNuevoComent("");
+    const { data } = await cargarHistorial(orden.no_orden);
+    setHistorial(data ?? []);
+    setG(false);
   };
 
   const horasTotal = tecnicosSeg.reduce((s, t) => s + (Number(t.tiempo_real_hrs) || 0), 0);
@@ -169,7 +187,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
         </div>
 
         <div style={{ display:"flex", gap:4, marginBottom:20, background:C.bg, borderRadius:8, padding:4 }}>
-          {["detalle","seguimiento","estado"].map(t => (
+          {["detalle","seguimiento","estado","historial"].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ flex:1, background:tab===t?C.accent:"transparent", color:tab===t?"#fff":C.muted, border:"none", borderRadius:6, padding:"7px 0", cursor:"pointer", fontWeight:600, fontSize:12, textTransform:"capitalize" }}>{t}</button>
           ))}
         </div>
@@ -329,6 +347,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                   setG(true);
                   const nuevo = !orden.entregada;
                   await supabase.from("ordenes_trabajo").update({ entregada: nuevo }).eq("no_orden", orden.no_orden);
+                  await registrarEvento(orden.no_orden, 'entrega', nuevo ? "Trabajo entregado al solicitante." : "Se desmarcó entrega.", usuario.id);
                   setG(false);
                   setMsg(nuevo ? "Marcada como entregada." : "Desmarcada como entregada.");
                   onActualizado();
@@ -343,6 +362,50 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
             <button onClick={guardarEstado} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"11px 0", fontWeight:700, cursor:"pointer" }}>
               {guardando ? "Actualizando…" : "Actualizar estado"}
             </button>
+          </div>
+        )}
+
+        {/* Historial */}
+        {tab === "historial" && (
+          <div style={{ display:"grid", gap:12 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <Label>Historial de la orden</Label>
+              <button onClick={() => cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []))} style={{ background:C.border, color:C.textSub, border:"none", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:11 }}>🔄 Actualizar</button>
+            </div>
+
+            {/* Agregar comentario */}
+            <div style={{ display:"flex", gap:8 }}>
+              <input placeholder="Agregar comentario…" value={nuevoComentario} onChange={e => setNuevoComent(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && nuevoComentario.trim()) agregarCom(); }} style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
+              <button onClick={agregarCom} disabled={!nuevoComentario.trim() || guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:12 }}>Comentar</button>
+            </div>
+
+            {/* Timeline */}
+            {historial.length === 0 ? (
+              <div style={{ color:C.muted, fontSize:13, padding:20, textAlign:"center" }}>Sin eventos registrados.</div>
+            ) : (
+              <div style={{ position:"relative", paddingLeft:28 }}>
+                <div style={{ position:"absolute", left:10, top:0, bottom:0, width:2, background:C.border }} />
+                {historial.map((ev, i) => {
+                  const icon = { recepcion:"📥", asignacion:"👤", inicio:"🔧", comentario:"💬", cambio_estado:"🔄", material:"🔩", terminado:"✅", entrega:"📦" }[ev.evento_tipo] ?? "📌";
+                  const color = { recepcion:C.accent, asignacion:"#60A5FA", inicio:C.warn, comentario:"#A78BFA", cambio_estado:C.success, material:"#F59E0B", terminado:C.success, entrega:C.purple }[ev.evento_tipo] ?? C.muted;
+                  const label = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega" }[ev.evento_tipo] ?? ev.evento_tipo;
+                  const fecha = new Date(ev.fecha_evento);
+                  return (
+                    <div key={ev.id} style={{ position:"relative", marginBottom:16 }}>
+                      <div style={{ position:"absolute", left:-22, top:2, width:16, height:16, borderRadius:"50%", background:color+"22", border:`2px solid ${color}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, zIndex:1 }}>{icon}</div>
+                      <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 14px" }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                          <span style={{ color, fontWeight:600, fontSize:12 }}>{label}</span>
+                          <span style={{ color:C.muted, fontSize:11 }}>{fecha.toLocaleDateString("es-MX")} {fecha.toLocaleTimeString("es-MX", { hour:"2-digit", minute:"2-digit" })}</span>
+                        </div>
+                        {ev.detalle && <div style={{ color:C.textSub, fontSize:13 }}>{ev.detalle}</div>}
+                        {ev.creado_por && <div style={{ color:C.muted, fontSize:11, marginTop:2 }}>Por: {ev.usuarios?.nombre_completo ?? "Sistema"}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

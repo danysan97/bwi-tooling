@@ -176,7 +176,6 @@ export async function crearOrden(datos, archivo = null) {
     archivo_nombre,
   }
 
-  // Si viene folio manual, usarlo
   if (datos.folio_manual) {
     payload.no_orden = Number(datos.folio_manual)
   }
@@ -186,6 +185,10 @@ export async function crearOrden(datos, archivo = null) {
     .insert(payload)
     .select()
     .single()
+
+  if (!error && data) {
+    await registrarEvento(data.no_orden, 'recepcion', null, datos.capturado_por_id || datos.solicitante_id)
+  }
 
   return { data, error }
 }
@@ -219,9 +222,15 @@ export async function actualizarEstado(no_orden, estado_nuevo, cambiado_por_id, 
     .from('ordenes_trabajo').update({ estado: estado_nuevo }).eq('no_orden', no_orden)
 
   if (!error) {
-    await supabase.from('historial_estados').insert({
-      orden_id: no_orden, estado_anterior: actual?.estado ?? null,
-      estado_nuevo, comentario, cambiado_por: cambiado_por_id,
+    let detalle = null
+    if (estado_nuevo === 'terminada')     detalle = 'Trabajo finalizado.'
+    else if (estado_nuevo === 'cancelada') detalle = 'Orden cancelada.'
+    else if (estado_nuevo === 'en_proceso') detalle = 'Iniciando trabajo.'
+    else if (comentario) detalle = comentario
+
+    await registrarEvento(no_orden, 'cambio_estado', detalle, cambiado_por_id, {
+      estado_anterior: actual?.estado ?? null,
+      estado_nuevo,
     })
   }
   return { error }
@@ -238,12 +247,11 @@ export async function cargarSeguimiento(no_orden) {
 
 export async function guardarSeguimiento(no_orden, tecnicos, comentarios, material_id, material_otro, actualizado_por_id) {
   const { data: existentes } = await supabase
-    .from('seguimiento_orden').select('id').eq('orden_id', no_orden)
+    .from('seguimiento_orden').select('id, tecnico_id, fecha_inicio, fecha_termino').eq('orden_id', no_orden)
 
   const existentesIds = (existentes ?? []).map(e => e.id)
   const incomingIds   = tecnicos.filter(t => t.id).map(t => t.id)
 
-  // Delete records removed by the user
   const idsAEliminar = existentesIds.filter(id => !incomingIds.includes(id))
   if (idsAEliminar.length) {
     await supabase.from('seguimiento_orden').delete().in('id', idsAEliminar)
@@ -267,11 +275,38 @@ export async function guardarSeguimiento(no_orden, tecnicos, comentarios, materi
     if (tech.id) {
       const { error: e } = await supabase.from('seguimiento_orden').update(payload).eq('id', tech.id)
       if (e) error = e
+
+      const existente = (existentes ?? []).find(ex => ex.id === tech.id)
+      if (existente) {
+        if (!existente.fecha_inicio && tech.fecha_inicio) {
+          const nombre = (await supabase.from('usuarios').select('nombre_completo').eq('id', tech.tecnico_id).maybeSingle()).data?.nombre_completo ?? 'Técnico'
+          await registrarEvento(no_orden, 'inicio', `${nombre} inició el trabajo.`, actualizado_por_id)
+        }
+        if (!existente.fecha_termino && tech.fecha_termino) {
+          const nombre = (await supabase.from('usuarios').select('nombre_completo').eq('id', tech.tecnico_id).maybeSingle()).data?.nombre_completo ?? 'Técnico'
+          await registrarEvento(no_orden, 'terminado', `${nombre} finalizó el trabajo.`, actualizado_por_id)
+        }
+      }
     } else {
       const { data, error: e } = await supabase.from('seguimiento_orden').insert(payload).select('id').single()
       if (e) error = e
-      else tech.id = data.id
+      else {
+        tech.id = data.id
+        if (tech.tecnico_id) {
+          const nombre = (await supabase.from('usuarios').select('nombre_completo').eq('id', tech.tecnico_id).maybeSingle()).data?.nombre_completo ?? 'Técnico'
+          await registrarEvento(no_orden, 'asignacion', `Técnico asignado: ${nombre}.`, actualizado_por_id)
+        }
+      }
     }
+  }
+
+  if (material_id || material_otro) {
+    const nombreMat = material_otro || (await supabase.from('materiales').select('nombre').eq('id', material_id).maybeSingle()).data?.nombre ?? material_id
+    await registrarEvento(no_orden, 'material', `Material registrado: ${nombreMat}.`, actualizado_por_id)
+  }
+
+  if (comentarios) {
+    await registrarEvento(no_orden, 'comentario', comentarios, actualizado_por_id)
   }
 
   return { error }
@@ -321,4 +356,35 @@ export async function obtenerTecnicos() {
     .eq('activo', true)
     .order('nombre_completo')
   return data ?? []
+}
+
+// ============================================================
+//  HISTORIAL DE ORDEN
+// ============================================================
+
+export async function registrarEvento(orden_id, evento_tipo, detalle = null, creado_por = null, extras = {}) {
+  const payload = {
+    orden_id,
+    evento_tipo,
+    detalle,
+    creado_por,
+    estado_anterior: extras.estado_anterior ?? null,
+    estado_nuevo:    extras.estado_nuevo    ?? null,
+  }
+  const { error } = await supabase.from('historial_orden').insert(payload)
+  if (error) console.error('registrarEvento error:', error)
+  return { error }
+}
+
+export async function agregarComentarioHistorial(orden_id, detalle, creado_por) {
+  return registrarEvento(orden_id, 'comentario', detalle, creado_por)
+}
+
+export async function cargarHistorial(orden_id) {
+  const { data, error } = await supabase
+    .from('historial_orden')
+    .select('id, evento_tipo, estado_anterior, estado_nuevo, detalle, fecha_evento, creado_por, usuarios(nombre_completo)')
+    .eq('orden_id', orden_id)
+    .order('fecha_evento', { ascending: true })
+  return { data: data ?? [], error }
 }

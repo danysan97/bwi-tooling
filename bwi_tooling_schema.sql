@@ -230,14 +230,26 @@ CREATE TABLE seguimiento_orden (
 -- 6. HISTORIAL DE ESTADOS
 -- ============================================================
 
-CREATE TABLE historial_estados (
+CREATE TYPE tipo_evento_orden AS ENUM (
+  'recepcion',
+  'asignacion',
+  'inicio',
+  'comentario',
+  'cambio_estado',
+  'material',
+  'terminado',
+  'entrega'
+);
+
+CREATE TABLE historial_orden (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   orden_id         INTEGER NOT NULL REFERENCES ordenes_trabajo(no_orden),
+  evento_tipo      tipo_evento_orden NOT NULL,
   estado_anterior  estado_orden,
-  estado_nuevo     estado_orden NOT NULL,
-  comentario       TEXT,
-  cambiado_por     UUID NOT NULL REFERENCES usuarios(id),
-  fecha_cambio     TIMESTAMP DEFAULT NOW()
+  estado_nuevo     estado_orden,
+  detalle          TEXT,
+  creado_por       UUID REFERENCES usuarios(id),
+  fecha_evento     TIMESTAMP DEFAULT NOW()
 );
 
 -- ============================================================
@@ -339,7 +351,7 @@ CREATE INDEX idx_ordenes_estado       ON ordenes_trabajo(estado);
 CREATE INDEX idx_ordenes_prioridad    ON ordenes_trabajo(prioridad);
 CREATE INDEX idx_ordenes_solicitante  ON ordenes_trabajo(solicitante_id);
 CREATE INDEX idx_ordenes_fecha        ON ordenes_trabajo(fecha_solicitud);
-CREATE INDEX idx_historial_orden      ON historial_estados(orden_id);
+CREATE INDEX idx_historial_orden      ON historial_orden(orden_id);
 CREATE INDEX idx_usuarios_empleado    ON usuarios(no_empleado);
 
 -- ============================================================
