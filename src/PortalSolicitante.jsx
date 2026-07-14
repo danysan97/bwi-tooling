@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { crearOrden, obtenerMisOrdenes, obtenerAreas, supabase } from "./lib/supabase";
+import { crearOrden, obtenerMisOrdenes, obtenerAreas, supabase, cargarHistorial } from "./lib/supabase";
 import ImprimirOrden from "./ImprimirOrden.jsx";
 
 const C = {
@@ -61,6 +61,7 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
   const [loading, setLoad]    = useState(true);
   const [ordenSel, setOS]     = useState(null);
   const [imprimiendo, setImp] = useState(false);
+  const [historial, setHistorial] = useState([]);
 
   const cargar = () => {
     setLoad(true);
@@ -68,6 +69,11 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
   };
 
   useEffect(() => { cargar(); }, [usuario.id]);
+
+  useEffect(() => {
+    if (ordenSel) cargarHistorial(ordenSel.no_orden).then(({ data }) => setHistorial(data ?? []));
+    else setHistorial([]);
+  }, [ordenSel]);
 
   return (
     <div style={{ minHeight:"100vh", background:C.bg, padding:24 }}>
@@ -144,6 +150,36 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
                 <div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>Descripción</div>
                 <div style={{ color:C.text, fontSize:14 }}>{ordenSel.descripcion}</div>
               </div>
+            </div>
+
+            {/* Historial */}
+            <div style={{ marginTop:20, borderTop:`1px solid ${C.border}`, paddingTop:16 }}>
+              <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>Historial</div>
+              {historial.length === 0 ? (
+                <div style={{ color:C.muted, fontSize:12 }}>Sin eventos registrados.</div>
+              ) : (
+                <div style={{ position:"relative", paddingLeft:24 }}>
+                  <div style={{ position:"absolute", left:8, top:0, bottom:0, width:2, background:C.border }} />
+                  {historial.map((ev) => {
+                    const icon = { recepcion:"📥", asignacion:"👤", inicio:"🔧", comentario:"💬", cambio_estado:"🔄", material:"🔩", terminado:"✅", entrega:"📦" }[ev.evento_tipo] ?? "📌";
+                    const color = { recepcion:C.accent, asignacion:"#60A5FA", inicio:C.warn, comentario:"#A78BFA", cambio_estado:C.success, material:"#F59E0B", terminado:C.success, entrega:C.purple }[ev.evento_tipo] ?? C.muted;
+                    const label = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega" }[ev.evento_tipo] ?? ev.evento_tipo;
+                    const fecha = new Date(ev.fecha_evento);
+                    return (
+                      <div key={ev.id} style={{ position:"relative", marginBottom:12 }}>
+                        <div style={{ position:"absolute", left:-18, top:2, width:14, height:14, borderRadius:"50%", background:color+"22", border:`2px solid ${color}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, zIndex:1 }}>{icon}</div>
+                        <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px" }}>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:2 }}>
+                            <span style={{ color, fontWeight:600, fontSize:11 }}>{label}</span>
+                            <span style={{ color:C.muted, fontSize:10 }}>{fecha.toLocaleDateString("es-MX")} {fecha.toLocaleTimeString("es-MX", { hour:"2-digit", minute:"2-digit" })}</span>
+                          </div>
+                          {ev.detalle && <div style={{ color:C.textSub, fontSize:12 }}>{ev.detalle}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
