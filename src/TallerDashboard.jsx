@@ -356,7 +356,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
             {estado === "terminada" && (
               <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", background:orden.entregada?C.purple+"18":C.bg, border:`1px solid ${orden.entregada?C.purple:C.border}`, borderRadius:10 }}>
                 <div style={{ flex:1 }}>
-                  <div style={{ color:C.text, fontWeight:600, fontSize:14 }}>📦 ¿Trabajo entregado?</div>
+                  <div style={{ color:C.text, fontWeight:600, fontSize:14 }}>¡Trabajo entregado!</div>
                   <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>Marca cuando el solicitante recoja la pieza</div>
                 </div>
                 <button onClick={async () => {
@@ -368,7 +368,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                   setMsg(nuevo ? "Marcada como entregada." : "Desmarcada como entregada.");
                   onActualizado();
                 }} disabled={guardando} style={{ background:orden.entregada?C.purple:C.border, color:orden.entregada?"#fff":C.muted, border:"none", borderRadius:8, padding:"8px 18px", cursor:"pointer", fontWeight:700, fontSize:13, minWidth:100 }}>
-                  {orden.entregada ? "✅ Entregada" : "Marcar"}
+                  {orden.entregada ? "✅ Entregada" : "Actualizar estado"}
                 </button>
               </div>
             )}
