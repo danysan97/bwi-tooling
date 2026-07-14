@@ -130,9 +130,9 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   };
 
   const guardarEstado = async () => {
-    const tieneFechaInicio = tecSeg.some(t => t.fecha_inicio);
-    const tieneFechaTermino = tecSeg.some(t => t.fecha_termino);
-    const tieneTecnico = tecSeg.some(t => t.tecnico_id);
+    const tieneFechaInicio = tecnicosSeg.some(t => t.fecha_inicio);
+    const tieneFechaTermino = tecnicosSeg.some(t => t.fecha_termino);
+    const tieneTecnico = tecnicosSeg.some(t => t.tecnico_id);
     const tieneMaterial = materialId || materialOtro;
     if (estado === "en_proceso" && (!tieneTecnico || !tieneFechaInicio || !tieneMaterial)) { setMsg("Necesita técnico asignado, fecha de inicio y material para cambiar a En proceso."); return; }
     if (estado === "terminada" && orden.estado !== "en_proceso") { setMsg("La orden debe estar En proceso antes de marcar Terminada."); return; }
@@ -375,7 +375,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                   setConfEntrega(false);
                   onActualizado();
                   onClose();
-                }} disabled={guardando || !tecSeg.some(t => t.fecha_termino)} title={!tecSeg.some(t => t.fecha_termino)?"Pon fecha de término en Seguimiento primero":""} style={{ background:tecSeg.some(t => t.fecha_termino)?C.success:C.muted, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:tecSeg.some(t => t.fecha_termino)?"pointer":"not-allowed", fontWeight:700, fontSize:13 }}>✓</button>
+                }} disabled={guardando || !tecnicosSeg.some(t => t.fecha_termino)} title={!tecnicosSeg.some(t => t.fecha_termino)?"Pon fecha de término en Seguimiento primero":""} style={{ background:tecnicosSeg.some(t => t.fecha_termino)?C.success:C.muted, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:tecnicosSeg.some(t => t.fecha_termino)?"pointer":"not-allowed", fontWeight:700, fontSize:13 }}>✓</button>
                 <button onClick={async () => {
                   setG(true);
                   await actualizarEstado(orden.no_orden, "terminada", usuario.id, null);
