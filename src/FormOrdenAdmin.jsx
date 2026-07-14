@@ -12,8 +12,7 @@ const PRIORIDADES = [
   { valor:"2_queja_cliente",  etiqueta:"2 — Queja de cliente", desc:"Riesgo a la calidad. Agrega folio de queja.",     color:C.warn    },
   { valor:"3_maquina_parada", etiqueta:"3 — Máquina parada",   desc:"Trabajos espontáneos o recurrentes.",             color:"#F97316" },
   { valor:"4_trabajo_rapido", etiqueta:"4 — Trabajo rápido",   desc:"Menos de 2 hrs para fabricarlo.",                 color:C.accent  },
-  { valor:"5_programado",     etiqueta:"5 — Programado",       desc:"Trabajo planeado con anticipación.",              color:"#8B5CF6" },
-  { valor:"5_fabricacion",    etiqueta:"6 — Fabricación",      desc:"Se enviará a fabricar por proveedor externo.",    color:C.muted   },
+  { valor:"5_fabricacion",    etiqueta:"5 — Fabricación",      desc:"Se enviará a fabricar por proveedor externo.",    color:C.muted   },
 ];
 
 const Label = ({ children, required }) => (

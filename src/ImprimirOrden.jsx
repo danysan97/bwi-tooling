@@ -173,7 +173,7 @@ export default function ImprimirOrden({ orden, onCerrar }) {
             </Fila>
             <Fila>
               <Campo label="Material utilizado" value={orden.material_usado || ""} flex={4} />
-              <Campo label="Estado" value={orden.estado === "terminada" ? "✅ TERMINADA" : orden.estado === "en_proceso" ? "🔧 EN PROCESO" : orden.estado === "cancelada" ? "❌ CANCELADA" : "🆕 NUEVA"} flex={2} />
+              <Campo label="Estado" value={orden.estado === "terminada" ? "✅ TERMINADA" : orden.estado === "en_proceso" ? "🔧 EN PROCESO" : orden.estado === "cancelada" ? "❌ CANCELADA" : orden.estado === "entregada" ? "📦 ENTREGADA" : "🆕 NUEVA"} flex={2} />
             </Fila>
 
             {/* Comentarios */}

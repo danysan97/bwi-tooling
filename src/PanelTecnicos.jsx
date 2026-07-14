@@ -43,10 +43,10 @@ const TooltipCustom = ({ active, payload, label }) => {
 
 const PRIO_LABEL = {
   "1_seguridad":"Seguridad","2_queja_cliente":"Queja","3_maquina_parada":"Máq. parada",
-  "4_trabajo_rapido":"Rápido","5_programado":"Programado","5_fabricacion":"Fabricación"
+  "4_trabajo_rapido":"Rápido","5_fabricacion":"Fabricación"
 };
-const EST_COLOR = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted };
-const EST_LABEL = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada" };
+const EST_COLOR = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted, entregada:C.purple };
+const EST_LABEL = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada", entregada:"Entregada" };
 
 // ── Semana actual ────────────────────────────────────────────
 function getSemanaActual() {
@@ -115,14 +115,14 @@ function HistorialTecnico({ tecnico, onVolver }) {
 
         {/* Filtros */}
         <div style={{ padding:"12px 20px", borderBottom:`1px solid ${C.border}`, display:"flex", gap:8, flexWrap:"wrap" }}>
-          {["todas","nueva_orden","en_proceso","terminada","cancelada"].map(f => (
+          {["todas","nueva_orden","en_proceso","terminada","entregada","cancelada"].map(f => (
             <button key={f} onClick={() => setFiltro(f)} style={{
               background: filtro===f ? (EST_COLOR[f]||C.accent)+"22" : "transparent",
               color:       filtro===f ? (EST_COLOR[f]||C.accent) : C.muted,
               border:     `1px solid ${filtro===f ? (EST_COLOR[f]||C.accent) : C.border}`,
               borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:600,
             }}>
-              {{ todas:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",cancelada:"Canceladas" }[f]}
+              {{ todas:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregada:"Entregadas",cancelada:"Canceladas" }[f]}
             </button>
           ))}
         </div>

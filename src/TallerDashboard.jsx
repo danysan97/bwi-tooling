@@ -21,8 +21,8 @@ const C = {
 };
 const PRIO_COLOR = { "1_seguridad":C.danger,"2_queja_cliente":C.warn,"3_maquina_parada":"#F97316","4_trabajo_rapido":C.accent,"5_fabricacion":C.muted };
 const PRIO_LABEL = { "1_seguridad":"1·Seguridad","2_queja_cliente":"2·Queja","3_maquina_parada":"3·Máq.parada","4_trabajo_rapido":"4·Rápido","5_fabricacion":"5·Fabricación" };
-const EST_COLOR  = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted };
-const EST_LABEL  = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada" };
+const EST_COLOR  = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted, entregada:C.purple };
+const EST_LABEL  = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada", entregada:"Entregada" };
 
 const Card = ({ children, style={} }) => (
   <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"20px 24px", ...style }}>{children}</div>
@@ -263,6 +263,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 <option value="nueva_orden">Nueva orden</option>
                 <option value="en_proceso">En proceso</option>
                 <option value="terminada">Terminada</option>
+                <option value="entregada">Entregada</option>
                 <option value="cancelada">Cancelada</option>
               </Select>
             </div>
@@ -329,16 +330,18 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
     nuevas:     ordenes.filter(o => o.estado === "nueva_orden").length,
     proceso:    ordenes.filter(o => o.estado === "en_proceso").length,
     terminadas: ordenes.filter(o => o.estado === "terminada").length,
+    entregadas: ordenes.filter(o => o.estado === "entregada").length,
     urgentes:   ordenes.filter(o => o.prioridad === "1_seguridad" || o.prioridad === "2_queja_cliente").length,
   };
 
   const mesesMap = {};
   grafMes.forEach(r => {
     const mes = new Date(r.mes).toLocaleString("es-MX", { month:"short" });
-    if (!mesesMap[mes]) mesesMap[mes] = { mes, nuevas:0, en_proceso:0, terminadas:0 };
+    if (!mesesMap[mes]) mesesMap[mes] = { mes, nuevas:0, en_proceso:0, terminadas:0, entregadas:0 };
     if (r.estado === "nueva_orden")  mesesMap[mes].nuevas     += Number(r.total);
     if (r.estado === "en_proceso")   mesesMap[mes].en_proceso += Number(r.total);
     if (r.estado === "terminada")    mesesMap[mes].terminadas += Number(r.total);
+    if (r.estado === "entregada")    mesesMap[mes].entregadas += Number(r.total);
   });
   const dataMes = Object.values(mesesMap);
 
@@ -379,11 +382,12 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
       <div style={{ maxWidth:1280, margin:"0 auto", padding:"22px 28px" }}>
 
         {/* KPIs */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:10, marginBottom:20 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, marginBottom:20 }}>
           <KPI label="Total órdenes"  value={kpis.total}      sub="Este año"         color={C.text}    />
           <KPI label="Nuevas"         value={kpis.nuevas}     sub="Sin asignar"      color={C.accent}  />
           <KPI label="En proceso"     value={kpis.proceso}    sub="En taller"        color={C.warn}    />
-          <KPI label="Terminadas"     value={kpis.terminadas} sub="Este mes"         color={C.success} />
+          <KPI label="Terminadas"     value={kpis.terminadas} sub="Completadas"      color={C.success} />
+          <KPI label="Entregadas"     value={kpis.entregadas} sub="Entregadas"       color={C.purple}  />
           <KPI label="Urgentes"       value={kpis.urgentes}   sub="Prioridad 1 y 2"  color={C.danger}  />
         </div>
 
@@ -400,9 +404,9 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
             <div style={{ padding:"14px 18px", borderBottom:`1px solid ${C.border}`, display:"flex", gap:8, flexWrap:"wrap" }}>
               <input placeholder="Folio, pieza, solicitante, área…" value={busqueda} onChange={e => setBusq(e.target.value)}
                 style={{ flex:1, minWidth:200, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
-              {["todos","nueva_orden","en_proceso","terminada","cancelada"].map(e => (
+              {["todos","nueva_orden","en_proceso","terminada","entregada","cancelada"].map(e => (
                 <button key={e} onClick={() => setFE(e)} style={{ background:filtroEst===e?(EST_COLOR[e]||C.accent)+"22":"transparent", color:filtroEst===e?(EST_COLOR[e]||C.accent):C.muted, border:`1px solid ${filtroEst===e?(EST_COLOR[e]||C.accent):C.border}`, borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
-                  {{ todos:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",cancelada:"Canceladas" }[e]}
+                  {{ todos:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregada:"Entregadas",cancelada:"Canceladas" }[e]}
                 </button>
               ))}
             </div>
@@ -457,6 +461,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                   <Bar dataKey="nuevas"     name="Nuevas"     fill={C.accent}  radius={[4,4,0,0]} />
                   <Bar dataKey="en_proceso" name="En proceso" fill={C.warn}    radius={[4,4,0,0]} />
                   <Bar dataKey="terminadas" name="Terminadas" fill={C.success} radius={[4,4,0,0]} />
+                  <Bar dataKey="entregadas" name="Entregadas" fill={C.purple}  radius={[4,4,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             </Card>

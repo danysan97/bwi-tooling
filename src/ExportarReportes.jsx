@@ -11,10 +11,10 @@ const C = {
 const PRIO_LABEL = {
   "1_seguridad":"1-Seguridad","2_queja_cliente":"2-Queja cliente",
   "3_maquina_parada":"3-Máquina parada","4_trabajo_rapido":"4-Trabajo rápido",
-  "5_programado":"5-Programado","5_fabricacion":"6-Fabricación",
+  "5_fabricacion":"5-Fabricación",
 };
 const EST_LABEL = {
-  nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada"
+  nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada", entregada:"Entregada"
 };
 
 function formatFecha(f) {
@@ -77,6 +77,7 @@ async function exportarOrdenes(fechaInicio, fechaFin) {
     ["Nuevas:", filas.filter(f => f["Estado"]==="Nueva").length],
     ["En proceso:", filas.filter(f => f["Estado"]==="En proceso").length],
     ["Terminadas:", filas.filter(f => f["Estado"]==="Terminada").length],
+    ["Entregadas:", filas.filter(f => f["Estado"]==="Entregada").length],
     ["Canceladas:", filas.filter(f => f["Estado"]==="Cancelada").length],
     [],
     ["Por prioridad:"],

@@ -178,7 +178,8 @@ CREATE TYPE estado_orden AS ENUM (
   'nueva_orden',
   'en_proceso',
   'terminada',
-  'cancelada'
+  'cancelada',
+  'entregada'
 );
 
 CREATE TABLE ordenes_trabajo (

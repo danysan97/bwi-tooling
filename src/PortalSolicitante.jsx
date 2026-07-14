@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { crearOrden, obtenerMisOrdenes, obtenerAreas, supabase } from "./lib/supabase";
+import ImprimirOrden from "./ImprimirOrden.jsx";
 
 const C = {
   bg:"#0F1117", surface:"#181C25", border:"#242935",
@@ -15,8 +16,8 @@ const PRIORIDADES = [
   { valor:"5_fabricacion",    etiqueta:"5 — Fabricación",      desc:"Se enviará a fabricar por proveedor externo.",            color:C.muted   },
 ];
 
-const ESTADO_COLOR = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted };
-const ESTADO_LABEL = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada" };
+const ESTADO_COLOR = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted, entregada:"#8B5CF6" };
+const ESTADO_LABEL = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada", entregada:"Entregada" };
 const PRIO_COLOR   = { "1_seguridad":C.danger,"2_queja_cliente":C.warn,"3_maquina_parada":"#F97316","4_trabajo_rapido":C.accent,"5_fabricacion":C.muted };
 const PRIO_LABEL   = { "1_seguridad":"Seguridad","2_queja_cliente":"Queja","3_maquina_parada":"Máq. parada","4_trabajo_rapido":"Rápido","5_fabricacion":"Fabricación" };
 
@@ -58,10 +59,15 @@ const Logo = () => (
 function MisOrdenes({ usuario, onNueva, onSalir }) {
   const [ordenes, setOrdenes] = useState([]);
   const [loading, setLoad]    = useState(true);
+  const [ordenSel, setOS]     = useState(null);
+  const [imprimiendo, setImp] = useState(false);
 
-  useEffect(() => {
+  const cargar = () => {
+    setLoad(true);
     obtenerMisOrdenes(usuario.id).then(({ data }) => { setOrdenes(data ?? []); setLoad(false); });
-  }, [usuario.id]);
+  };
+
+  useEffect(() => { cargar(); }, [usuario.id]);
 
   return (
     <div style={{ minHeight:"100vh", background:C.bg, padding:24 }}>
@@ -70,6 +76,7 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
           <Logo />
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
             <span style={{ color:C.muted, fontSize:13 }}>{usuario.nombre_completo} · {usuario.no_empleado}</span>
+            <button onClick={cargar} style={{ background:C.border, color:C.textSub, border:"none", borderRadius:10, padding:"9px 12px", fontSize:13, cursor:"pointer" }} title="Actualizar">🔄</button>
             <button onClick={onNueva} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:10, padding:"9px 18px", fontWeight:700, fontSize:13, cursor:"pointer" }}>+ Nueva orden</button>
             <button onClick={onSalir} style={{ background:C.border, color:C.muted, border:"none", borderRadius:10, padding:"9px 14px", fontSize:13, cursor:"pointer" }}>Salir</button>
           </div>
@@ -80,7 +87,9 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
           : ordenes.length === 0
             ? <div style={{ textAlign:"center", padding:60, color:C.muted }}>Aún no tienes órdenes. ¡Crea la primera!</div>
             : ordenes.map(o => (
-              <div key={o.no_orden} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"16px 20px", marginBottom:10, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10 }}>
+              <div key={o.no_orden} onClick={() => setOS(o)} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"16px 20px", marginBottom:10, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10, cursor:"pointer" }}
+                onMouseEnter={e => e.currentTarget.style.borderColor=C.accent}
+                onMouseLeave={e => e.currentTarget.style.borderColor=C.border}>
                 <div>
                   <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
                     <span style={{ color:C.accent, fontWeight:700, fontSize:15 }}>#{o.no_orden}</span>
@@ -94,6 +103,53 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
             ))
         }
       </div>
+
+      {/* Modal detalle */}
+      {ordenSel && (
+        <div style={{ position:"fixed", inset:0, background:"#000000cc", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }} onClick={() => setOS(null)}>
+          <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:28, width:"100%", maxWidth:540, maxHeight:"90vh", overflowY:"auto" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start", marginBottom:20 }}>
+              <div>
+                <div style={{ color:C.muted, fontSize:12 }}>ORDEN #{ordenSel.no_orden}</div>
+                <div style={{ color:C.text, fontSize:20, fontWeight:700 }}>{ordenSel.nombre_pieza}</div>
+              </div>
+              <button onClick={() => setOS(null)} style={{ background:"none", border:"none", color:C.muted, cursor:"pointer", fontSize:20 }}>✕</button>
+            </div>
+
+            <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
+              <span style={{ background:ESTADO_COLOR[ordenSel.estado]+"22", color:ESTADO_COLOR[ordenSel.estado], border:`1px solid ${ESTADO_COLOR[ordenSel.estado]}55`, borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{ESTADO_LABEL[ordenSel.estado]}</span>
+              <span style={{ background:PRIO_COLOR[ordenSel.prioridad]+"22", color:PRIO_COLOR[ordenSel.prioridad], border:`1px solid ${PRIO_COLOR[ordenSel.prioridad]}55`, borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{PRIO_LABEL[ordenSel.prioridad]}</span>
+              <button onClick={() => setImp(true)} style={{ background:"#1B3A6B", color:"#fff", border:"none", borderRadius:6, padding:"2px 10px", fontSize:12, cursor:"pointer" }}>🖨️ Imprimir</button>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              {[
+                ["Fecha solicitud", ordenSel.fecha_solicitud?.slice(0,10)],
+                ["Técnico", ordenSel.tecnico_nombre ?? "Sin asignar"],
+                ["Área", ordenSel.area_nombre ?? "—"],
+                ["Departamento", ordenSel.departamento ?? "—"],
+                ["Línea / Celda", ordenSel.linea_celda ?? "—"],
+                ["S.E.T.C. #", ordenSel.setc_numero || "—"],
+                ["No. plano", ordenSel.no_plano || "—"],
+                ["No. máquina", ordenSel.no_maquina || "—"],
+                ["Cantidad", ordenSel.cantidad],
+                ["Material", ordenSel.material_usado ?? "—"],
+                ["Fecha inicio", ordenSel.fecha_inicio || "—"],
+                ["Fecha término", ordenSel.fecha_termino || "—"],
+                ["Tiempo real", ordenSel.tiempo_real_hrs ? `${ordenSel.tiempo_real_hrs} hrs` : "—"],
+              ].map(([k,v]) => (
+                <div key={k}><div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>{k}</div><div style={{ color:C.text, fontSize:14 }}>{v}</div></div>
+              ))}
+              <div style={{ gridColumn:"1/-1" }}>
+                <div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>Descripción</div>
+                <div style={{ color:C.text, fontSize:14 }}>{ordenSel.descripcion}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {imprimiendo && ordenSel && <ImprimirOrden orden={ordenSel} onCerrar={() => setImp(false)} />}
     </div>
   );
 }
