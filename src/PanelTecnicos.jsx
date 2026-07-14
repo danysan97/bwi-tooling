@@ -73,10 +73,14 @@ function HistorialTecnico({ tecnico, onVolver }) {
   useEffect(() => {
     supabase
       .from("seguimiento_orden")
-      .select("id, fecha_inicio, fecha_termino, tiempo_real_hrs, comentarios, orden_id, ordenes_trabajo(no_orden, nombre_pieza, estado, prioridad, fecha_solicitud, solicitante_id, usuarios(nombre_completo))")
+      .select("id, fecha_inicio, fecha_termino, tiempo_real_hrs, comentarios, orden_id, ordenes_trabajo(no_orden, nombre_pieza, estado, prioridad, fecha_solicitud)")
       .eq("tecnico_id", tecnico.id)
       .order("fecha_registro", { ascending: false })
-      .then(({ data }) => { setOrdenes(data ?? []); setLoad(false); });
+      .then(({ data, error }) => {
+        if (error) console.error("HistorialTecnico error:", error);
+        setOrdenes(data ?? []);
+        setLoad(false);
+      });
   }, [tecnico.id]);
 
   const filtradas = filtro === "todas" ? ordenes : ordenes.filter(o => o.ordenes_trabajo?.estado === filtro);
@@ -144,7 +148,7 @@ function HistorialTecnico({ tecnico, onVolver }) {
                     <td style={{ padding:"10px 16px", color:C.accent, fontWeight:700 }}>#{o.ordenes_trabajo?.no_orden}</td>
                     <td style={{ padding:"10px 16px", color:C.textSub }}>{o.ordenes_trabajo?.fecha_solicitud?.slice(0,10)}</td>
                     <td style={{ padding:"10px 16px", fontWeight:500 }}>{o.ordenes_trabajo?.nombre_pieza}</td>
-                    <td style={{ padding:"10px 16px", color:C.textSub }}>{o.ordenes_trabajo?.usuarios?.nombre_completo ?? "—"}</td>
+                    <td style={{ padding:"10px 16px", color:C.textSub }}>—</td>
                     <td style={{ padding:"10px 16px" }}>
                       <span style={{ fontSize:11, fontWeight:600 }}>{PRIO_LABEL[o.ordenes_trabajo?.prioridad] ?? "—"}</span>
                     </td>
