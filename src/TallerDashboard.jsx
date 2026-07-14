@@ -129,32 +129,22 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setTecSeg(ts => ts.map((t, i) => i === idx ? { ...t, [campo]: valor } : t));
   };
 
-  const guardarEstado = async () => {
-    const tieneFechaInicio = tecnicosSeg.some(t => t.fecha_inicio);
-    const tieneFechaTermino = tecnicosSeg.some(t => t.fecha_termino);
-    const tieneTecnico = tecnicosSeg.some(t => t.tecnico_id);
-    const tieneMaterial = materialId || materialOtro;
-    if (estado === "en_proceso" && (!tieneTecnico || !tieneFechaInicio || !tieneMaterial)) { setMsg("Necesita técnico asignado, fecha de inicio y material para cambiar a En proceso."); return; }
-    if (estado === "terminada" && orden.estado !== "en_proceso") { setMsg("La orden debe estar En proceso antes de marcar Terminada."); return; }
-    if (estado === "terminada") { setConfEntrega(true); return; }
-    setG(true);
-    const { error } = await actualizarEstado(orden.no_orden, estado, usuario.id, coment || null);
-    setG(false);
-    if (error) { setMsg("Error al actualizar."); return; }
-    setMsg("Estado actualizado."); onActualizado();
-    const { data } = await cargarHistorial(orden.no_orden);
-    setHistorial(data ?? []);
-    setTimeout(() => setMsg(""), 2000);
-  };
-
   const guardarSeg = async () => {
     const tecValidos = tecnicosSeg.filter(t => t.tecnico_id);
     if (!tecValidos.length) { setMsg("Asigna al menos un técnico."); return; }
     if (!materialId && !materialOtro) { setMsg("Selecciona un material."); return; }
     setG(true);
     const { error } = await guardarSeguimiento(orden.no_orden, tecValidos, comentarios, materialId, materialOtro, usuario.id);
+    if (error) { setG(false); setMsg("Error al guardar."); return; }
+    const tieneInicio = tecValidos.some(t => t.fecha_inicio);
+    const tieneTermino = tecValidos.some(t => t.fecha_termino);
+    if (tieneInicio && orden.estado === "nueva_orden") {
+      await actualizarEstado(orden.no_orden, "en_proceso", usuario.id, null);
+    }
+    if (tieneTermino && orden.estado === "en_proceso") {
+      await actualizarEstado(orden.no_orden, "terminada", usuario.id, null);
+    }
     setG(false);
-    if (error) { setMsg("Error al guardar."); return; }
     setMsg("Seguimiento guardado."); onActualizado();
     const { data } = await cargarHistorial(orden.no_orden);
     setHistorial(data ?? []);
@@ -266,11 +256,11 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                     <div><Label>Fecha inicio</Label><Input type="date" value={t.fecha_inicio} onChange={e => actualizarTec(idx, "fecha_inicio", e.target.value)} /></div>
                     <div>
                       <Label>Fecha término</Label>
-                      {estado === "terminada" ? (
+                      {(estado === "en_proceso" || estado === "terminada") ? (
                         <Input type="date" value={t.fecha_termino} onChange={e => actualizarTec(idx, "fecha_termino", e.target.value)} />
                       ) : (
                         <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.muted, fontSize:12 }}>
-                          Disponible al cambiar a "Terminada"
+                          Disponible al estar en proceso
                         </div>
                       )}
                     </div>
@@ -350,50 +340,40 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               </div>
             )}
 
-            <div>
-              <Label>Nuevo estado</Label>
-              <Select value={estado} onChange={e => setEstado(e.target.value)}>
-                <option value="nueva_orden">Nueva orden</option>
-                <option value="en_proceso">En proceso</option>
-                <option value="terminada" disabled={!tecnicosSeg.some(t => t.fecha_termino)}>Terminada{!tecnicosSeg.some(t => t.fecha_termino) ? " (requiere fecha término)" : ""}</option>
-                <option value="cancelada">Cancelada</option>
-              </Select>
-            </div>
-
-            {/* Confirmación entregada — aparece cuando presionas "Actualizar estado" con "terminada" */}
-            {confirmandoEntrega && (
-              <div style={{ display:"flex", gap:8, alignItems:"center", justifyContent:"center", padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10 }}>
-                <span style={{ color:C.text, fontSize:14, fontWeight:600 }}>📦 ¿Trabajo entregado?</span>
-                <button onClick={async () => {
-                  setG(true);
-                  const { error } = await actualizarEstado(orden.no_orden, "terminada", usuario.id, null);
-                  if (!error) {
-                    await supabase.from("ordenes_trabajo").update({ entregada: true }).eq("no_orden", orden.no_orden);
-                    await registrarEvento(orden.no_orden, 'entrega', "Trabajo entregado al solicitante.", usuario.id);
-                  }
-                  setG(false);
-                  setConfEntrega(false);
-                  onActualizado();
-                  onClose();
-                }} disabled={guardando || !tecnicosSeg.some(t => t.fecha_termino)} title={!tecnicosSeg.some(t => t.fecha_termino)?"Pon fecha de término en Seguimiento primero":""} style={{ background:tecnicosSeg.some(t => t.fecha_termino)?C.success:C.muted, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:tecnicosSeg.some(t => t.fecha_termino)?"pointer":"not-allowed", fontWeight:700, fontSize:13 }}>✓</button>
-                <button onClick={async () => {
-                  setG(true);
-                  await actualizarEstado(orden.no_orden, "terminada", usuario.id, null);
-                  setG(false);
-                  setConfEntrega(false);
-                  setMsg("Estado actualizado."); onActualizado();
-                  setTimeout(() => setMsg(""), 2000);
-                }} disabled={guardando} style={{ background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✕</button>
+            {/* Confirmación entregada — solo cuando está terminada */}
+            {orden.estado === "terminada" && !orden.entregada && (
+              <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ color:C.text, fontWeight:600, fontSize:14 }}>📦 ¿Trabajo entregado?</div>
+                  <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>Marca cuando el solicitante recoja la pieza</div>
+                </div>
+                {!confirmandoEntrega ? (
+                  <button onClick={() => setConfEntrega(true)} disabled={guardando} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:8, padding:"8px 18px", cursor:"pointer", fontWeight:700, fontSize:13 }}>¿Entregado?</button>
+                ) : (
+                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                    <span style={{ color:C.text, fontSize:13, fontWeight:600 }}>¿Confirmas?</span>
+                    <button onClick={async () => {
+                      setG(true);
+                      await supabase.from("ordenes_trabajo").update({ entregada: true }).eq("no_orden", orden.no_orden);
+                      await registrarEvento(orden.no_orden, 'entrega', "Trabajo entregado al solicitante.", usuario.id);
+                      setG(false);
+                      setConfEntrega(false);
+                      onActualizado();
+                      onClose();
+                    }} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✓</button>
+                    <button onClick={() => setConfEntrega(false)} disabled={guardando} style={{ background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✕</button>
+                  </div>
+                )}
               </div>
+            )}
+            {orden.estado === "terminada" && orden.entregada && (
+              <div style={{ padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10, color:C.purple, fontWeight:600, fontSize:14 }}>✅ Trabajo entregado</div>
             )}
             <div style={{ display:"flex", gap:8 }}>
               <input placeholder="Agregar comentario…" value={nuevoComentario} onChange={e => setNuevoComent(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && nuevoComentario.trim()) agregarCom(); }} style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
               <button onClick={agregarCom} disabled={!nuevoComentario.trim() || guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:12 }}>Comentar</button>
             </div>
             {msg && <div style={{ color:C.success, fontSize:13 }}>{msg}</div>}
-            <button onClick={guardarEstado} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"11px 0", fontWeight:700, cursor:"pointer" }}>
-              {guardando ? "Actualizando…" : "Actualizar estado"}
-            </button>
           </div>
         )}
 
