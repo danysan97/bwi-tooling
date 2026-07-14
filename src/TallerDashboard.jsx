@@ -354,8 +354,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               </Select>
             </div>
 
-            {/* Toggle entregada — solo cuando está terminada */}
-            {estado === "terminada" && (
+            {/* Toggle entregada — solo cuando está terminada con fecha de término */}
+            {estado === "terminada" && orden.fecha_termino && (
               <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", background:orden.entregada?C.purple+"18":C.bg, border:`1px solid ${orden.entregada?C.purple:C.border}`, borderRadius:10 }}>
                 <div style={{ flex:1 }}>
                   <div style={{ color:C.text, fontWeight:600, fontSize:14 }}>¡Trabajo entregado!</div>
