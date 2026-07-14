@@ -63,6 +63,11 @@ const Textarea = ({ ...props }) => (
     onBlur={e => e.target.style.borderColor=C.border} />
 );
 const Spinner = () => <div style={{ textAlign:"center", padding:60, color:C.muted }}>Cargando…</div>;
+const sinSETC = (o) => {
+  const v = (o.setc_numero ?? "").toString().trim();
+  return !v || !/^\d{8}$/.test(v);
+};
+
 const Tooltip2 = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -218,6 +223,11 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
             ].map(([k,v]) => (
               <div key={k}><div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>{k}</div><div style={{ color:C.text, fontSize:14 }}>{v}</div></div>
             ))}
+            {sinSETC(orden) && (
+              <div style={{ gridColumn:"1/-1", background:C.danger+"18", border:`1px solid ${C.danger}55`, borderRadius:8, padding:"10px 14px", color:C.danger, fontWeight:600, fontSize:13 }}>
+                ⚠️ SIN NUMERO S.E.T.C. # — NO ESTA DADA DE ALTA
+              </div>
+            )}
             <div style={{ gridColumn:"1/-1" }}>
               <div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>Descripción</div>
               <div style={{ color:C.text, fontSize:14 }}>{orden.descripcion}</div>
@@ -463,6 +473,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
   const filtradas = ordenes.filter(o => {
     let matchEst = filtroEst === "todos" || o.estado === filtroEst;
     if (filtroEst === "entregadas") matchEst = o.estado === "terminada" && o.entregada;
+    if (filtroEst === "sin_setc") matchEst = sinSETC(o);
     const q = busqueda.toLowerCase();
     const matchQ = !q || String(o.no_orden).includes(q) || o.nombre_pieza?.toLowerCase().includes(q) || o.solicitante_nombre?.toLowerCase().includes(q) || o.area_nombre?.toLowerCase().includes(q);
     return matchEst && matchQ;
@@ -475,6 +486,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
     terminadas: ordenes.filter(o => o.estado === "terminada").length,
     entregadas: ordenes.filter(o => o.estado === "terminada" && o.entregada).length,
     urgentes:   ordenes.filter(o => o.prioridad === "1_seguridad" || o.prioridad === "2_queja_cliente").length,
+    sinSetc:    ordenes.filter(o => sinSETC(o)).length,
   };
 
   const mesesMap = {};
@@ -524,13 +536,14 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
       <div style={{ maxWidth:1280, margin:"0 auto", padding:"22px 28px" }}>
 
         {/* KPIs */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, marginBottom:20 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:10, marginBottom:20 }}>
           <KPI label="Total órdenes"  value={kpis.total}      sub="Este año"         color={C.text}    />
           <KPI label="Nuevas"         value={kpis.nuevas}     sub="Sin asignar"      color={C.accent}  />
           <KPI label="En proceso"     value={kpis.proceso}    sub="En taller"        color={C.warn}    />
           <KPI label="Terminadas"     value={kpis.terminadas} sub="Completadas"      color={C.success} />
           <KPI label="Entregadas"     value={kpis.entregadas} sub="Entregadas"       color={C.purple}  />
           <KPI label="Urgentes"       value={kpis.urgentes}   sub="Prioridad 1 y 2"  color={C.danger}  />
+          <KPI label="Sin SETC"       value={kpis.sinSetc}    sub="No dada de alta"  color={C.danger}  />
         </div>
 
         {/* Tabs */}
@@ -546,18 +559,19 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
             <div style={{ padding:"14px 18px", borderBottom:`1px solid ${C.border}`, display:"flex", gap:8, flexWrap:"wrap" }}>
               <input placeholder="Folio, pieza, solicitante, área…" value={busqueda} onChange={e => setBusq(e.target.value)}
                 style={{ flex:1, minWidth:200, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
-              {["todos","nueva_orden","en_proceso","terminada","entregadas","cancelada"].map(e => (
-                <button key={e} onClick={() => setFE(e)} style={{ background:filtroEst===e?(e==="entregadas"?C.purple:(EST_COLOR[e]||C.accent))+"22":"transparent", color:filtroEst===e?(e==="entregadas"?C.purple:(EST_COLOR[e]||C.accent)):C.muted, border:`1px solid ${filtroEst===e?(e==="entregadas"?C.purple:(EST_COLOR[e]||C.accent)):C.border}`, borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
-                  {{ todos:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregadas:"Entregadas",cancelada:"Canceladas" }[e]}
-                </button>
-              ))}
+              {["todos","nueva_orden","en_proceso","terminada","entregadas","cancelada","sin_setc"].map(e => {
+                const c = e==="entregadas"?C.purple:e==="sin_setc"?C.danger:(EST_COLOR[e]||C.accent);
+                return <button key={e} onClick={() => setFE(e)} style={{ background:filtroEst===e?c+"22":"transparent", color:filtroEst===e?c:C.muted, border:`1px solid ${filtroEst===e?c:C.border}`, borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
+                  {{ todos:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregadas:"Entregadas",cancelada:"Canceladas",sin_setc:"⚠ Sin SETC" }[e]}
+                </button>;
+              })}
             </div>
             {loading ? <Spinner /> : (
               <div style={{ overflowX:"auto" }}>
                 <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                   <thead>
                     <tr style={{ borderBottom:`1px solid ${C.border}` }}>
-                      {["Folio","Fecha","Solicitante","Área","Pieza","Prioridad","Estado","Técnico","Hrs"].map(h => (
+                      {["Folio","Fecha","Solicitante","Área","Pieza","S.E.T.C.","Prioridad","Estado","Técnico","Hrs"].map(h => (
                         <th key={h} style={{ padding:"10px 14px", color:C.muted, fontWeight:600, textAlign:"left", whiteSpace:"nowrap" }}>{h}</th>
                       ))}
                     </tr>
@@ -572,6 +586,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                         <td style={{ padding:"10px 14px" }}>{o.solicitante_nombre}</td>
                         <td style={{ padding:"10px 14px", color:C.textSub, maxWidth:150, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{o.area_nombre ?? o.departamento}</td>
                         <td style={{ padding:"10px 14px", fontWeight:500 }}>{o.nombre_pieza}</td>
+                        <td style={{ padding:"10px 14px", color:sinSETC(o)?C.danger:C.textSub, fontWeight:sinSETC(o)?600:400, fontSize:12 }}>{sinSETC(o)?"⚠ SIN SETC":o.setc_numero || "—"}</td>
                         <td style={{ padding:"10px 14px" }}><PrioBadge p={o.prioridad} /></td>
                         <td style={{ padding:"10px 14px" }}><Badge estado={o.estado} entregada={o.entregada} /></td>
                         <td style={{ padding:"10px 14px", color:C.textSub }}>{o.tecnico_nombre ?? "—"}</td>
