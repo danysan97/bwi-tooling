@@ -355,7 +355,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               <Select value={estado} onChange={e => setEstado(e.target.value)}>
                 <option value="nueva_orden">Nueva orden</option>
                 <option value="en_proceso">En proceso</option>
-                <option value="terminada">Terminada</option>
+                <option value="terminada" disabled={!tecnicosSeg.some(t => t.fecha_termino)}>Terminada{!tecnicosSeg.some(t => t.fecha_termino) ? " (requiere fecha término)" : ""}</option>
                 <option value="cancelada">Cancelada</option>
               </Select>
             </div>
