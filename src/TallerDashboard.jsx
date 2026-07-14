@@ -131,8 +131,9 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   };
 
   const guardarEstado = async () => {
-    if (estado === "terminada") { setConfEntrega(true); return; }
     if (estado === "en_proceso" && !orden.fecha_inicio) { setMsg("Pon la fecha de inicio antes de cambiar a En proceso."); return; }
+    if (estado === "terminada" && orden.estado !== "en_proceso") { setMsg("La orden debe estar En proceso antes de marcar Terminada."); return; }
+    if (estado === "terminada") { setConfEntrega(true); return; }
     setG(true);
     const { error } = await actualizarEstado(orden.no_orden, estado, usuario.id, coment || null);
     setG(false);
@@ -360,18 +361,21 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
             {confirmandoEntrega && (
               <div style={{ display:"flex", gap:8, alignItems:"center", justifyContent:"center", padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10 }}>
                 <span style={{ color:C.text, fontSize:14, fontWeight:600 }}>📦 ¿Trabajo entregado?</span>
-                <button onClick={async () => {
-                  setG(true);
-                  const { error } = await actualizarEstado(orden.no_orden, "terminada", usuario.id, null);
-                  if (!error) {
-                    await supabase.from("ordenes_trabajo").update({ entregada: true }).eq("no_orden", orden.no_orden);
-                    await registrarEvento(orden.no_orden, 'entrega', "Trabajo entregado al solicitante.", usuario.id);
-                  }
-                  setG(false);
-                  setConfEntrega(false);
-                  onActualizado();
-                  onClose();
-                }} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✓</button>
+                <button onClick={() => {
+                  if (!orden.fecha_termino) { setMsg("Pon la fecha de término antes de marcar como entregada."); return; }
+                  (async () => {
+                    setG(true);
+                    const { error } = await actualizarEstado(orden.no_orden, "terminada", usuario.id, null);
+                    if (!error) {
+                      await supabase.from("ordenes_trabajo").update({ entregada: true }).eq("no_orden", orden.no_orden);
+                      await registrarEvento(orden.no_orden, 'entrega', "Trabajo entregado al solicitante.", usuario.id);
+                    }
+                    setG(false);
+                    setConfEntrega(false);
+                    onActualizado();
+                    onClose();
+                  })();
+                }} disabled={guardando} style={{ background:orden.fecha_termino?C.success:C.muted, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:orden.fecha_termino?"pointer":"not-allowed", fontWeight:700, fontSize:13 }}>✓</button>
                 <button onClick={async () => {
                   setG(true);
                   await actualizarEstado(orden.no_orden, "terminada", usuario.id, null);
