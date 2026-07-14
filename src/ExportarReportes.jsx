@@ -42,6 +42,7 @@ async function exportarOrdenes(fechaInicio, fechaFin) {
     "S.E.T.C. #":         o.setc_numero ?? "—",
     "No. Plano":          o.no_plano ?? "—",
     "No. Máquina":        o.no_maquina ?? "—",
+    "Línea / Celda":      o.linea_celda ?? "—",
     "Cantidad":           o.cantidad ?? 0,
     "Descripción":        o.descripcion ?? "—",
     "Prioridad":          PRIO_LABEL[o.prioridad] ?? o.prioridad,
@@ -62,7 +63,7 @@ async function exportarOrdenes(fechaInicio, fechaFin) {
   // Anchos de columna
   ws["!cols"] = [
     {wch:10},{wch:16},{wch:28},{wch:14},{wch:30},{wch:20},{wch:30},
-    {wch:14},{wch:16},{wch:14},{wch:10},{wch:40},{wch:20},{wch:14},
+    {wch:14},{wch:16},{wch:16},{wch:10},{wch:40},{wch:20},{wch:14},
     {wch:28},{wch:20},{wch:14},{wch:14},{wch:12},{wch:30},{wch:12},{wch:12},
   ];
 
@@ -249,7 +250,7 @@ export default function ExportarReportes({ onCerrar }) {
             <div style={{ color:C.textSub, fontSize:11, fontWeight:600, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>El archivo incluirá</div>
             {tipo === "ordenes" ? (
               <ul style={{ color:C.muted, fontSize:12, paddingLeft:16, lineHeight:2 }}>
-                <li>Hoja 1: Todas las órdenes con 22 columnas de detalle</li>
+                <li>Hoja 1: Todas las órdenes con 23 columnas de detalle</li>
                 <li>Hoja 2: Resumen por estado y prioridad</li>
               </ul>
             ) : (

@@ -198,6 +198,10 @@ CREATE TABLE ordenes_trabajo (
   archivo_nombre    VARCHAR(255),
   es_orden_manual   BOOLEAN DEFAULT FALSE,
   capturado_por_id  UUID REFERENCES usuarios(id),
+  autorizada        BOOLEAN,
+  autorizado_por    UUID REFERENCES usuarios(id),
+  motivo_rechazo    TEXT,
+  folio_queja       VARCHAR(50),
   creado_en         TIMESTAMP DEFAULT NOW(),
   actualizado_en    TIMESTAMP DEFAULT NOW()
 );
@@ -271,6 +275,8 @@ SELECT
   o.archivo_nombre,
   o.es_orden_manual,
   o.solicitante_id,
+  o.autorizada,
+  o.folio_queja,
   u.nombre_completo    AS solicitante_nombre,
   u.no_empleado        AS solicitante_empleado,
   a.nombre             AS area_nombre,
