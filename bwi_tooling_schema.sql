@@ -283,18 +283,23 @@ SELECT
   a.nombre             AS area_nombre,
   a.codigo             AS area_codigo,
   u.departamento,
-  s.fecha_inicio,
-  s.fecha_termino,
-  s.tiempo_real_hrs,
-  s.comentarios,
-  t.nombre_completo    AS tecnico_nombre,
-  COALESCE(m.nombre, s.material_otro) AS material_usado
+  (SELECT MIN(s2.fecha_inicio)   FROM seguimiento_orden s2 WHERE s2.orden_id = o.no_orden) AS fecha_inicio,
+  (SELECT MAX(s2.fecha_termino)  FROM seguimiento_orden s2 WHERE s2.orden_id = o.no_orden) AS fecha_termino,
+  (SELECT SUM(s2.tiempo_real_hrs) FROM seguimiento_orden s2 WHERE s2.orden_id = o.no_orden) AS tiempo_real_hrs,
+  (SELECT string_agg(s2.comentarios, ' | ' ORDER BY s2.fecha_registro)
+   FROM seguimiento_orden s2 WHERE s2.orden_id = o.no_orden AND s2.comentarios IS NOT NULL AND s2.comentarios != '') AS comentarios,
+  (SELECT string_agg(t2.nombre_completo, ', ' ORDER BY s2.fecha_registro)
+   FROM seguimiento_orden s2 JOIN usuarios t2 ON s2.tecnico_id = t2.id
+   WHERE s2.orden_id = o.no_orden) AS tecnico_nombre,
+  (SELECT array_agg(s2.tecnico_id ORDER BY s2.fecha_registro)
+   FROM seguimiento_orden s2
+   WHERE s2.orden_id = o.no_orden AND s2.tecnico_id IS NOT NULL) AS tecnico_ids,
+  (SELECT string_agg(COALESCE(m2.nombre, s2.material_otro), ', ' ORDER BY s2.fecha_registro)
+   FROM seguimiento_orden s2 LEFT JOIN materiales m2 ON s2.material_id = m2.id
+   WHERE s2.orden_id = o.no_orden AND COALESCE(m2.nombre, s2.material_otro) IS NOT NULL) AS material_usado
 FROM ordenes_trabajo o
 JOIN  usuarios u        ON o.solicitante_id = u.id
-LEFT JOIN areas a       ON u.area_codigo    = a.codigo
-LEFT JOIN seguimiento_orden s ON s.orden_id = o.no_orden
-LEFT JOIN usuarios t    ON s.tecnico_id     = t.id
-LEFT JOIN materiales m  ON s.material_id    = m.id;
+LEFT JOIN areas a       ON u.area_codigo    = a.codigo;
 
 CREATE VIEW grafica_ordenes_por_mes AS
 SELECT

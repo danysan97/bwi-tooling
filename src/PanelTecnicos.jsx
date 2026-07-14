@@ -72,17 +72,17 @@ function HistorialTecnico({ tecnico, onVolver }) {
 
   useEffect(() => {
     supabase
-      .from("vista_ordenes")
-      .select("*")
-      .eq("tecnico_nombre", tecnico.nombre_completo)
-      .order("fecha_solicitud", { ascending: false })
+      .from("seguimiento_orden")
+      .select("id, fecha_inicio, fecha_termino, tiempo_real_hrs, comentarios, orden_id, ordenes_trabajo(no_orden, nombre_pieza, estado, prioridad, fecha_solicitud, solicitante_id, usuarios(nombre_completo))")
+      .eq("tecnico_id", tecnico.id)
+      .order("fecha_registro", { ascending: false })
       .then(({ data }) => { setOrdenes(data ?? []); setLoad(false); });
-  }, [tecnico.nombre_completo]);
+  }, [tecnico.id]);
 
-  const filtradas = filtro === "todas" ? ordenes : ordenes.filter(o => o.estado === filtro);
+  const filtradas = filtro === "todas" ? ordenes : ordenes.filter(o => o.ordenes_trabajo?.estado === filtro);
 
   const totalHrs  = ordenes.reduce((s, o) => s + (Number(o.tiempo_real_hrs) || 0), 0);
-  const terminadas = ordenes.filter(o => o.estado === "terminada").length;
+  const terminadas = ordenes.filter(o => o.ordenes_trabajo?.estado === "terminada").length;
 
   return (
     <div style={{ position:"fixed", inset:0, background:"#000000dd", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
@@ -140,17 +140,17 @@ function HistorialTecnico({ tecnico, onVolver }) {
               </thead>
               <tbody>
                 {filtradas.map((o,i) => (
-                  <tr key={o.no_orden} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66" }}>
-                    <td style={{ padding:"10px 16px", color:C.accent, fontWeight:700 }}>#{o.no_orden}</td>
-                    <td style={{ padding:"10px 16px", color:C.textSub }}>{o.fecha_solicitud?.slice(0,10)}</td>
-                    <td style={{ padding:"10px 16px", fontWeight:500 }}>{o.nombre_pieza}</td>
-                    <td style={{ padding:"10px 16px", color:C.textSub }}>{o.solicitante_nombre}</td>
+                  <tr key={o.id} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66" }}>
+                    <td style={{ padding:"10px 16px", color:C.accent, fontWeight:700 }}>#{o.ordenes_trabajo?.no_orden}</td>
+                    <td style={{ padding:"10px 16px", color:C.textSub }}>{o.ordenes_trabajo?.fecha_solicitud?.slice(0,10)}</td>
+                    <td style={{ padding:"10px 16px", fontWeight:500 }}>{o.ordenes_trabajo?.nombre_pieza}</td>
+                    <td style={{ padding:"10px 16px", color:C.textSub }}>{o.ordenes_trabajo?.usuarios?.nombre_completo ?? "—"}</td>
                     <td style={{ padding:"10px 16px" }}>
-                      <span style={{ fontSize:11, fontWeight:600 }}>{PRIO_LABEL[o.prioridad] ?? o.prioridad}</span>
+                      <span style={{ fontSize:11, fontWeight:600 }}>{PRIO_LABEL[o.ordenes_trabajo?.prioridad] ?? "—"}</span>
                     </td>
                     <td style={{ padding:"10px 16px" }}>
-                      <span style={{ background:EST_COLOR[o.estado]+"22", color:EST_COLOR[o.estado], border:`1px solid ${EST_COLOR[o.estado]}55`, borderRadius:6, padding:"2px 8px", fontSize:11, fontWeight:600 }}>
-                        {EST_LABEL[o.estado]}
+                      <span style={{ background:EST_COLOR[o.ordenes_trabajo?.estado]+"22", color:EST_COLOR[o.ordenes_trabajo?.estado], border:`1px solid ${EST_COLOR[o.ordenes_trabajo?.estado]}55`, borderRadius:6, padding:"2px 8px", fontSize:11, fontWeight:600 }}>
+                        {EST_LABEL[o.ordenes_trabajo?.estado]}
                       </span>
                     </td>
                     <td style={{ padding:"10px 16px", color:C.textSub }}>{o.tiempo_real_hrs ?? "—"}</td>

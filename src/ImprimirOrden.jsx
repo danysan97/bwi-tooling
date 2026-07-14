@@ -168,8 +168,8 @@ export default function ImprimirOrden({ orden, onCerrar }) {
             <Fila>
               <Campo label="Fecha inicio" value={orden.fecha_inicio || ""} flex={2} />
               <Campo label="Fecha término" value={orden.fecha_termino || ""} flex={2} />
-              <Campo label="Tiempo real (hrs)" value={orden.tiempo_real_hrs || ""} flex={2} />
-              <Campo label="Técnico que realizó" value={orden.tecnico_nombre || ""} flex={3} />
+              <Campo label="Horas totales" value={orden.tiempo_real_hrs || ""} flex={2} />
+              <Campo label="Técnico(s) que realizó" value={orden.tecnico_nombre || ""} flex={3} />
             </Fila>
             <Fila>
               <Campo label="Material utilizado" value={orden.material_usado || ""} flex={4} />

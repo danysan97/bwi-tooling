@@ -227,25 +227,52 @@ export async function actualizarEstado(no_orden, estado_nuevo, cambiado_por_id, 
   return { error }
 }
 
-export async function guardarSeguimiento(no_orden, seguimiento, actualizado_por_id) {
-  const { data: existente } = await supabase
-    .from('seguimiento_orden').select('id').eq('orden_id', no_orden).maybeSingle()
+export async function cargarSeguimiento(no_orden) {
+  const { data, error } = await supabase
+    .from('seguimiento_orden')
+    .select('id, fecha_inicio, fecha_termino, tiempo_real_hrs, tecnico_id, material_id, material_otro, comentarios')
+    .eq('orden_id', no_orden)
+    .order('fecha_registro')
+  return { data: data ?? [], error }
+}
 
-  const payload = {
-    orden_id:        no_orden,
-    fecha_inicio:    seguimiento.fecha_inicio    || null,
-    fecha_termino:   seguimiento.fecha_termino   || null,
-    tiempo_real_hrs: seguimiento.tiempo_real_hrs ? Number(seguimiento.tiempo_real_hrs) : null,
-    tecnico_id:      seguimiento.tecnico_id      || null,
-    material_id:     seguimiento.material_id     || null,
-    material_otro:   seguimiento.material_otro   || null,
-    comentarios:     seguimiento.comentarios     || null,
-    actualizado_por: actualizado_por_id,
+export async function guardarSeguimiento(no_orden, tecnicos, comentarios, material_id, material_otro, actualizado_por_id) {
+  const { data: existentes } = await supabase
+    .from('seguimiento_orden').select('id').eq('orden_id', no_orden)
+
+  const existentesIds = (existentes ?? []).map(e => e.id)
+  const incomingIds   = tecnicos.filter(t => t.id).map(t => t.id)
+
+  // Delete records removed by the user
+  const idsAEliminar = existentesIds.filter(id => !incomingIds.includes(id))
+  if (idsAEliminar.length) {
+    await supabase.from('seguimiento_orden').delete().in('id', idsAEliminar)
   }
 
-  const { error } = existente
-    ? await supabase.from('seguimiento_orden').update(payload).eq('id', existente.id)
-    : await supabase.from('seguimiento_orden').insert(payload)
+  let error = null
+
+  for (const tech of tecnicos) {
+    const payload = {
+      orden_id:        no_orden,
+      fecha_inicio:    tech.fecha_inicio    || null,
+      fecha_termino:   tech.fecha_termino   || null,
+      tiempo_real_hrs: tech.tiempo_real_hrs ? Number(tech.tiempo_real_hrs) : null,
+      tecnico_id:      tech.tecnico_id      || null,
+      material_id:     material_id          || null,
+      material_otro:   material_otro        || null,
+      comentarios:     comentarios           || null,
+      actualizado_por: actualizado_por_id,
+    }
+
+    if (tech.id) {
+      const { error: e } = await supabase.from('seguimiento_orden').update(payload).eq('id', tech.id)
+      if (e) error = e
+    } else {
+      const { data, error: e } = await supabase.from('seguimiento_orden').insert(payload).select('id').single()
+      if (e) error = e
+      else tech.id = data.id
+    }
+  }
 
   return { error }
 }

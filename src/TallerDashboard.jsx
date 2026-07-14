@@ -8,7 +8,7 @@ import FormOrdenAdmin from "./FormOrdenAdmin.jsx";
 import {
   supabase,
   obtenerSesion, cerrarSesion,
-  obtenerOrdenes, actualizarEstado, guardarSeguimiento, obtenerUrlPlano,
+  obtenerOrdenes, actualizarEstado, guardarSeguimiento, cargarSeguimiento, obtenerUrlPlano,
   datosGraficaMes, datosGraficaTecnicos, datosGraficaPrioridades,
   obtenerMateriales, obtenerTecnicos, obtenerAreas,
 } from "./lib/supabase";
@@ -74,27 +74,46 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const [tab, setTab]       = useState("detalle");
   const [estado, setEstado] = useState(orden?.estado ?? "");
   const [coment, setComent] = useState("");
-  const [seg, setSeg]       = useState({ fecha_inicio:"", fecha_termino:"", tiempo_real_hrs:"", tecnico_id:"", material_id:"", material_otro:"", comentarios:"" });
+  const [tecnicosSeg, setTecSeg] = useState([]);
+  const [materialId, setMatId]   = useState("");
+  const [materialOtro, setMatOtro] = useState("");
+  const [comentarios, setComentSeg] = useState("");
   const [guardando, setG]   = useState(false);
   const [msg, setMsg]       = useState("");
   const [imprimiendo, setImp] = useState(false);
 
   useEffect(() => {
-    if (orden) {
-      setEstado(orden.estado);
-      setSeg({
-        fecha_inicio:    orden.fecha_inicio    ?? "",
-        fecha_termino:   orden.fecha_termino   ?? "",
-        tiempo_real_hrs: orden.tiempo_real_hrs ?? "",
-        tecnico_id:      "",
-        material_id:     "",
-        material_otro:   orden.material_usado  ?? "",
-        comentarios:     orden.comentarios     ?? "",
-      });
-    }
+    if (!orden) return;
+    setEstado(orden.estado);
+    cargarSeguimiento(orden.no_orden).then(({ data }) => {
+      if (data?.length) {
+        setTecSeg(data.map(s => ({
+          id: s.id,
+          tecnico_id: s.tecnico_id ?? "",
+          fecha_inicio: s.fecha_inicio ?? "",
+          fecha_termino: s.fecha_termino ?? "",
+          tiempo_real_hrs: s.tiempo_real_hrs ?? "",
+        })));
+        setMatId(data[0]?.material_id ?? "");
+        setMatOtro(data[0]?.material_otro ?? "");
+        setComentSeg(data[0]?.comentarios ?? "");
+      } else {
+        setTecSeg([{ id: null, tecnico_id: "", fecha_inicio: "", fecha_termino: "", tiempo_real_hrs: "" }]);
+      }
+    });
   }, [orden]);
 
   if (!orden) return null;
+
+  const agregarTecnico = () => {
+    setTecSeg(ts => [...ts, { id: null, tecnico_id: "", fecha_inicio: "", fecha_termino: "", tiempo_real_hrs: "" }]);
+  };
+  const quitarTecnico = (idx) => {
+    setTecSeg(ts => ts.filter((_, i) => i !== idx));
+  };
+  const actualizarTec = (idx, campo, valor) => {
+    setTecSeg(ts => ts.map((t, i) => i === idx ? { ...t, [campo]: valor } : t));
+  };
 
   const guardarEstado = async () => {
     setG(true);
@@ -106,8 +125,10 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   };
 
   const guardarSeg = async () => {
+    const tecValidos = tecnicosSeg.filter(t => t.tecnico_id);
+    if (!tecValidos.length) { setMsg("Asigna al menos un técnico."); return; }
     setG(true);
-    const { error } = await guardarSeguimiento(orden.no_orden, seg, usuario.id);
+    const { error } = await guardarSeguimiento(orden.no_orden, tecValidos, comentarios, materialId, materialOtro, usuario.id);
     setG(false);
     if (error) { setMsg("Error al guardar."); return; }
     setMsg("Seguimiento guardado."); onActualizado();
@@ -120,9 +141,11 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     if (url) window.open(url, "_blank");
   };
 
+  const horasTotal = tecnicosSeg.reduce((s, t) => s + (Number(t.tiempo_real_hrs) || 0), 0);
+
   return (
     <div style={{ position:"fixed", inset:0, background:"#000000cc", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }} onClick={onClose}>
-      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:28, width:"100%", maxWidth:580, maxHeight:"90vh", overflowY:"auto" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:28, width:"100%", maxWidth:620, maxHeight:"90vh", overflowY:"auto" }} onClick={e => e.stopPropagation()}>
 
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start", marginBottom:20 }}>
           <div>
@@ -159,11 +182,11 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               ["No. máquina", orden.no_maquina || "—"],
               ["Línea / Celda", orden.linea_celda || "—"],
               ["Departamento", orden.departamento || "—"],
-              ["Técnico asignado", orden.tecnico_nombre || "Sin asignar"],
+              ["Técnico(s)", orden.tecnico_nombre || "Sin asignar"],
               ["Material", orden.material_usado || "—"],
               ["Fecha inicio", orden.fecha_inicio || "—"],
               ["Fecha término", orden.fecha_termino || "—"],
-              ["Tiempo real", orden.tiempo_real_hrs ? `${orden.tiempo_real_hrs} hrs` : "—"],
+              ["Horas totales", orden.tiempo_real_hrs ? `${orden.tiempo_real_hrs} hrs` : "—"],
             ].map(([k,v]) => (
               <div key={k}><div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>{k}</div><div style={{ color:C.text, fontSize:14 }}>{v}</div></div>
             ))}
@@ -174,36 +197,61 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
           </div>
         )}
 
-        {/* Seguimiento */}
+        {/* Seguimiento — Multi-técnico */}
         {tab === "seguimiento" && (
-          <div style={{ display:"grid", gap:12 }}>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-              <div><Label>Fecha inicio</Label><Input type="date" value={seg.fecha_inicio} onChange={e => setSeg(s=>({...s,fecha_inicio:e.target.value}))} /></div>
-              <div><Label>Fecha término</Label><Input type="date" value={seg.fecha_termino} onChange={e => setSeg(s=>({...s,fecha_termino:e.target.value}))} /></div>
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-              <div>
-                <Label>Técnico</Label>
-                <Select value={seg.tecnico_id} onChange={e => setSeg(s=>({...s,tecnico_id:e.target.value}))}>
-                  <option value="">— Sin asignar —</option>
-                  {tecnicos.map(t => <option key={t.id} value={t.id}>{t.nombre_completo}</option>)}
-                </Select>
+          <div style={{ display:"grid", gap:14 }}>
+
+            {/* Lista de técnicos */}
+            <div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <Label>Técnicos asignados ({tecnicosSeg.length})</Label>
+                <button onClick={agregarTecnico} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:11, fontWeight:600 }}>+ Agregar técnico</button>
               </div>
-              <div><Label>Horas reales</Label><Input type="number" min="0" step="0.5" placeholder="0.0" value={seg.tiempo_real_hrs} onChange={e => setSeg(s=>({...s,tiempo_real_hrs:e.target.value}))} /></div>
+              {tecnicosSeg.map((t, idx) => (
+                <div key={idx} style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:10, padding:12, marginBottom:8 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                    <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>TÉCNICO {idx + 1}</span>
+                    {tecnicosSeg.length > 1 && (
+                      <button onClick={() => quitarTecnico(idx)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:11 }}>✕ Quitar</button>
+                    )}
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                    <div>
+                      <Label>Técnico</Label>
+                      <Select value={t.tecnico_id} onChange={e => actualizarTec(idx, "tecnico_id", e.target.value)}>
+                        <option value="">— Seleccionar —</option>
+                        {tecnicos.map(tec => <option key={tec.id} value={tec.id}>{tec.nombre_completo}</option>)}
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Horas reales</Label>
+                      <Input type="number" min="0" step="0.5" placeholder="0.0" value={t.tiempo_real_hrs} onChange={e => actualizarTec(idx, "tiempo_real_hrs", e.target.value)} />
+                    </div>
+                    <div><Label>Fecha inicio</Label><Input type="date" value={t.fecha_inicio} onChange={e => actualizarTec(idx, "fecha_inicio", e.target.value)} /></div>
+                    <div><Label>Fecha término</Label><Input type="date" value={t.fecha_termino} onChange={e => actualizarTec(idx, "fecha_termino", e.target.value)} /></div>
+                  </div>
+                </div>
+              ))}
+              <div style={{ color:C.textSub, fontSize:12, marginTop:4 }}>Total horas: <strong style={{ color:C.text }}>{horasTotal.toFixed(1)} hrs</strong></div>
             </div>
+
+            {/* Material compartido */}
             <div>
               <Label>Material</Label>
-              <Select value={seg.material_id} onChange={e => setSeg(s=>({...s,material_id:e.target.value}))}>
+              <Select value={materialId} onChange={e => setMatId(e.target.value)}>
                 <option value="">— Seleccionar —</option>
                 {materiales.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
                 <option value="otro">Otro…</option>
               </Select>
+              {materialId === "otro" && (
+                <div style={{ marginTop:8 }}><Label>Especificar material</Label><Input placeholder="Ej. Acero D2" value={materialOtro} onChange={e => setMatOtro(e.target.value)} /></div>
+              )}
             </div>
-            {seg.material_id === "otro" && (
-              <div><Label>Especificar material</Label><Input placeholder="Ej. Acero D2" value={seg.material_otro} onChange={e => setSeg(s=>({...s,material_otro:e.target.value}))} /></div>
-            )}
-            <div><Label>Comentarios del taller</Label><Textarea rows={3} placeholder="Observaciones, ajustes, detalles…" value={seg.comentarios} onChange={e => setSeg(s=>({...s,comentarios:e.target.value}))} /></div>
-            {msg && <div style={{ color:C.success, fontSize:13 }}>{msg}</div>}
+
+            {/* Comentarios compartidos */}
+            <div><Label>Comentarios del taller</Label><Textarea rows={3} placeholder="Observaciones, ajustes, detalles…" value={comentarios} onChange={e => setComentSeg(e.target.value)} /></div>
+
+            {msg && <div style={{ color: msg.includes("Error") ? C.danger : C.success, fontSize:13 }}>{msg}</div>}
             <button onClick={guardarSeg} disabled={guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"11px 0", fontWeight:700, cursor:"pointer" }}>
               {guardando ? "Guardando…" : "Guardar seguimiento"}
             </button>
