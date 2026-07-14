@@ -251,7 +251,16 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                       <Input type="number" min="0" step="0.5" placeholder="0.0" value={t.tiempo_real_hrs} onChange={e => actualizarTec(idx, "tiempo_real_hrs", e.target.value)} />
                     </div>
                     <div><Label>Fecha inicio</Label><Input type="date" value={t.fecha_inicio} onChange={e => actualizarTec(idx, "fecha_inicio", e.target.value)} /></div>
-                    <div><Label>Fecha término</Label><Input type="date" value={t.fecha_termino} onChange={e => actualizarTec(idx, "fecha_termino", e.target.value)} /></div>
+                    <div>
+                      <Label>Fecha término</Label>
+                      {estado === "terminada" ? (
+                        <Input type="date" value={t.fecha_termino} onChange={e => actualizarTec(idx, "fecha_termino", e.target.value)} />
+                      ) : (
+                        <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.muted, fontSize:12 }}>
+                          Disponible al cambiar a "Terminada"
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
