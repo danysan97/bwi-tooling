@@ -133,9 +133,10 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const guardarEstado = async () => {
     const tieneFechaInicio = tecSeg.some(t => t.fecha_inicio);
     const tieneFechaTermino = tecSeg.some(t => t.fecha_termino);
-    if (estado === "en_proceso" && !tieneFechaInicio) { setMsg("Pon la fecha de inicio en el tab Seguimiento antes de cambiar a En proceso."); return; }
+    const tieneTecnico = tecSeg.some(t => t.tecnico_id);
+    const tieneMaterial = materialId || materialOtro;
+    if (estado === "en_proceso" && (!tieneTecnico || !tieneFechaInicio || !tieneMaterial)) { setMsg("Necesita técnico asignado, fecha de inicio y material para cambiar a En proceso."); return; }
     if (estado === "terminada" && orden.estado !== "en_proceso") { setMsg("La orden debe estar En proceso antes de marcar Terminada."); return; }
-    if (estado === "terminada" && !tieneFechaTermino) { setMsg("Pon la fecha de término en el tab Seguimiento antes de marcar Terminada."); return; }
     if (estado === "terminada") { setConfEntrega(true); return; }
     setG(true);
     const { error } = await actualizarEstado(orden.no_orden, estado, usuario.id, coment || null);
