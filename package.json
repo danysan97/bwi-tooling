@@ -1,6 +1,6 @@
 {
   "name": "bwi-tooling",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Sistema de Órdenes de Trabajo — BWI Departamento de Tooling",
   "type": "module",
   "scripts": {
