@@ -356,7 +356,6 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 </button>
               </div>
             )}
-            </div>
             <div><Label>Comentario (opcional)</Label><Textarea rows={2} placeholder="Motivo del cambio…" value={coment} onChange={e => setComent(e.target.value)} /></div>
             {msg && <div style={{ color:C.success, fontSize:13 }}>{msg}</div>}
             <button onClick={guardarEstado} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"11px 0", fontWeight:700, cursor:"pointer" }}>
