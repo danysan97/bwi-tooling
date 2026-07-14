@@ -301,7 +301,7 @@ export async function guardarSeguimiento(no_orden, tecnicos, comentarios, materi
   }
 
   if (material_id || material_otro) {
-    const nombreMat = material_otro || (await supabase.from('materiales').select('nombre').eq('id', material_id).maybeSingle()).data?.nombre ?? material_id
+    const nombreMat = material_otro || ((await supabase.from('materiales').select('nombre').eq('id', material_id).maybeSingle()).data?.nombre ?? material_id)
     await registrarEvento(no_orden, 'material', `Material registrado: ${nombreMat}.`, actualizado_por_id)
   }
 
