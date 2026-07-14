@@ -381,9 +381,10 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 )}
               </div>
             )}
-            {estado === "en_proceso" && (
-              <div><Label>Comentario (opcional)</Label><Textarea rows={2} placeholder="Motivo del cambio…" value={coment} onChange={e => setComent(e.target.value)} /></div>
-            )}
+            <div style={{ display:"flex", gap:8 }}>
+              <input placeholder="Agregar comentario…" value={nuevoComentario} onChange={e => setNuevoComent(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && nuevoComentario.trim()) agregarCom(); }} style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
+              <button onClick={agregarCom} disabled={!nuevoComentario.trim() || guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:12 }}>Comentar</button>
+            </div>
             {msg && <div style={{ color:C.success, fontSize:13 }}>{msg}</div>}
             <button onClick={guardarEstado} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"11px 0", fontWeight:700, cursor:"pointer" }}>
               {guardando ? "Actualizando…" : "Actualizar estado"}
@@ -397,12 +398,6 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <Label>Historial de la orden</Label>
               <button onClick={() => cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []))} style={{ background:C.border, color:C.textSub, border:"none", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:11 }}>🔄 Actualizar</button>
-            </div>
-
-            {/* Agregar comentario */}
-            <div style={{ display:"flex", gap:8 }}>
-              <input placeholder="Agregar comentario…" value={nuevoComentario} onChange={e => setNuevoComent(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && nuevoComentario.trim()) agregarCom(); }} style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
-              <button onClick={agregarCom} disabled={!nuevoComentario.trim() || guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:12 }}>Comentar</button>
             </div>
 
             {/* Timeline */}
