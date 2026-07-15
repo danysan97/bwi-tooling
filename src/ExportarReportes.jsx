@@ -103,9 +103,9 @@ async function exportarTecnicos(fechaInicio, fechaFin) {
   if (!tecs?.length) return { ok: false, msg: "Sin técnicos registrados." };
 
   let q = supabase.from("seguimiento_orden")
-    .select("tecnico_id, tiempo_real_hrs, fecha_inicio, fecha_termino, orden_id, ordenes_trabajo(no_orden, nombre_pieza, estado, prioridad, fecha_solicitud, solicitante_id, usuarios(nombre_completo))");
-  if (fechaInicio) q = q.gte("fecha_inicio", fechaInicio);
-  if (fechaFin)    q = q.lte("fecha_inicio", fechaFin);
+    .select("tecnico_id, tiempo_real_hrs, fecha_inicio, fecha_termino, orden_id, ordenes_trabajo!inner(no_orden, nombre_pieza, estado, prioridad, fecha_solicitud, solicitante_id, usuarios(nombre_completo))");
+  if (fechaInicio) q = q.gte("ordenes_trabajo.fecha_solicitud", fechaInicio + "T00:00:00");
+  if (fechaFin)    q = q.lte("ordenes_trabajo.fecha_solicitud", fechaFin + "T23:59:59");
   const { data: segs } = await q;
 
   const HRS_SEMANA = { primero:40, segundo:37.5 };
