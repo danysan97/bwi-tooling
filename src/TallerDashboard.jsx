@@ -138,8 +138,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     const tecValidos = tecnicosSeg.filter(t => t.tecnico_id);
     if (!tecValidos.length) { setMsg("Asigna al menos un técnico."); return; }
     if (!materialId && !materialOtro) { setMsg("Selecciona un material."); return; }
-    const sinHoras = tecValidos.filter(t => !t.tiempo_real_hrs);
-    if (sinHoras.length) { setMsg("Pon las horas reales a todos los técnicos antes de guardar."); return; }
+    const sinHoras = tecValidos.filter(t => t.fecha_termino && !t.tiempo_real_hrs);
+    if (sinHoras.length) { setMsg("Pon las horas reales a los técnicos que tienen fecha de término antes de guardar."); return; }
     setG(true);
     const { error } = await guardarSeguimiento(orden.no_orden, tecValidos, comentarios, materialId, materialOtro, usuario.id);
     if (error) { setG(false); setMsg("Error al guardar."); return; }
@@ -323,13 +323,16 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 {(orden.autorizada === null || orden.autorizada === undefined) && (
                   <>
                     <div style={{ marginBottom:8 }}>
-                      <Label>Motivo de rechazo (si aplica)</Label>
-                      <Textarea rows={2} placeholder="Escribe el motivo si vas a rechazar…" value={coment} onChange={e => setComent(e.target.value)} />
+                      <Label>Comentario (opcional)</Label>
+                      <Textarea rows={2} placeholder="Comentario al autorizar o rechazar…" value={coment} onChange={e => setComent(e.target.value)} />
                     </div>
                     <div style={{ display:"flex", gap:8 }}>
                       <button onClick={async () => {
                         setG(true);
                         await supabase.from("ordenes_trabajo").update({ autorizada: true, autorizado_por: usuario.id }).eq("no_orden", orden.no_orden);
+                        const nombre = usuario.nombre_completo ?? "Admin";
+                        const detalle = coment.trim() ? `Orden autorizada por ${nombre}. ${coment.trim()}` : `Orden autorizada por ${nombre}.`;
+                        await registrarEvento(orden.no_orden, 'autorizacion', detalle, usuario.id);
                         setG(false); setMsg("Orden autorizada."); onActualizado();
                       }} disabled={guardando} style={{ flex:1, background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"10px 0", fontWeight:700, cursor:"pointer", fontSize:13 }}>
                         ✅ Autorizar
@@ -338,6 +341,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                         if (!coment.trim()) { setMsg("Escribe el motivo del rechazo."); return; }
                         setG(true);
                         await supabase.from("ordenes_trabajo").update({ autorizada: false, autorizado_por: usuario.id, motivo_rechazo: coment }).eq("no_orden", orden.no_orden);
+                        const nombre = usuario.nombre_completo ?? "Admin";
+                        await registrarEvento(orden.no_orden, 'autorizacion', `Orden rechazada por ${nombre}. Motivo: ${coment.trim()}`, usuario.id);
                         setG(false); setMsg("Orden rechazada."); onActualizado();
                       }} disabled={guardando} style={{ flex:1, background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"10px 0", fontWeight:700, cursor:"pointer", fontSize:13 }}>
                         ❌ Rechazar
@@ -404,9 +409,9 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               <div style={{ position:"relative", paddingLeft:28 }}>
                 <div style={{ position:"absolute", left:10, top:0, bottom:0, width:2, background:C.border }} />
                 {historial.map((ev, i) => {
-                  const icon = { recepcion:"📥", asignacion:"👤", inicio:"🔧", comentario:"💬", cambio_estado:"🔄", material:"🔩", terminado:"✅", entrega:"📦" }[ev.evento_tipo] ?? "📌";
-                  const color = { recepcion:C.accent, asignacion:"#60A5FA", inicio:C.warn, comentario:"#A78BFA", cambio_estado:C.success, material:"#F59E0B", terminado:C.success, entrega:C.purple }[ev.evento_tipo] ?? C.muted;
-                  const label = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega" }[ev.evento_tipo] ?? ev.evento_tipo;
+                  const icon = { recepcion:"📥", asignacion:"👤", inicio:"🔧", comentario:"💬", autorizacion:"📋", cambio_estado:"🔄", material:"🔩", terminado:"✅", entrega:"📦" }[ev.evento_tipo] ?? "📌";
+                  const color = { recepcion:C.accent, asignacion:"#60A5FA", inicio:C.warn, comentario:"#A78BFA", autorizacion:"#F97316", cambio_estado:C.success, material:"#F59E0B", terminado:C.success, entrega:C.purple }[ev.evento_tipo] ?? C.muted;
+                  const label = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", autorizacion:"Autorización", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega" }[ev.evento_tipo] ?? ev.evento_tipo;
                   const fecha = parseFechaUTC(ev.fecha_evento);
                   return (
                     <div key={ev.id} style={{ position:"relative", marginBottom:16 }}>

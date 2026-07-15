@@ -235,6 +235,7 @@ CREATE TYPE tipo_evento_orden AS ENUM (
   'asignacion',
   'inicio',
   'comentario',
+  'autorizacion',
   'cambio_estado',
   'material',
   'terminado',
