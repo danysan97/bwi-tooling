@@ -208,7 +208,13 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
                 </div>
                 <div>
                   <Label>Fecha término</Label>
-                  <DatePicker value={fechaTermino} onChange={setFTermino} />
+                  {(orden.estado === "en_proceso" || orden.estado === "terminada") ? (
+                    <DatePicker value={fechaTermino} onChange={setFTermino} />
+                  ) : (
+                    <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.muted, fontSize:12 }}>
+                      Disponible al estar en proceso
+                    </div>
+                  )}
                 </div>
               </div>
               <div>
