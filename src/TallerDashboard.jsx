@@ -95,6 +95,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const [confirmandoEntrega, setConfEntrega] = useState(false);
   const [nombreAut, setNombreAut] = useState("");
   const [puestoAut, setPuestoAut] = useState("");
+  const [planoUrl, setPlanoUrl] = useState(null);
 
   useEffect(() => {
     if (!orden) return;
@@ -104,6 +105,10 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setConfEntrega(false);
     setNombreAut("");
     setPuestoAut("");
+    setPlanoUrl(null);
+    if (orden.archivo_url) {
+      obtenerUrlPlano(orden.archivo_url).then(({ url }) => setPlanoUrl(url));
+    }
     cargarSeguimiento(orden.no_orden).then(({ data }) => {
       if (data?.length) {
         setTecSeg(data.map(s => ({
@@ -255,6 +260,18 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               <div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>Descripción</div>
               <div style={{ color:C.text, fontSize:14 }}>{orden.descripcion}</div>
             </div>
+            {planoUrl && (
+              <div style={{ gridColumn:"1/-1", marginTop:4 }}>
+                <div style={{ color:C.muted, fontSize:11, marginBottom:6 }}>Plano / Archivo adjunto</div>
+                {orden.archivo_nombre?.match(/\.(pdf)$/i) ? (
+                  <iframe src={planoUrl} style={{ width:"100%", height:400, border:`1px solid ${C.border}`, borderRadius:8 }} title="Plano" />
+                ) : (
+                  <a href={planoUrl} target="_blank" rel="noopener noreferrer">
+                    <img src={planoUrl} alt="Plano" style={{ maxWidth:"100%", maxHeight:400, borderRadius:8, border:`1px solid ${C.border}`, cursor:"pointer" }} />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         )}
 
