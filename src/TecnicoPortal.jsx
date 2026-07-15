@@ -253,11 +253,9 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
             </div>
           )}
         </div>
-
-        {/* Print content (hidden, used to capture HTML for print window) */}
-        <div ref={printRef} style={{ position:"absolute", left:-9999, top:0 }}>
-          <ImprimirOrden orden={o} />
-        </div>
+      </div>
+      <div ref={printRef} style={{ position:"absolute", left:-9999, top:0 }}>
+        <ImprimirOrden orden={o} />
       </div>
     </div>
   );
