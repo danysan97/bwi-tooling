@@ -95,23 +95,30 @@ async function exportarOrdenes(fechaInicio, fechaFin) {
 
 // ── Exportar desempeño técnicos ──────────────────────────────
 async function exportarTecnicos(fechaInicio, fechaFin) {
-  const { data: tecs } = await supabase
+  const { data: tecs, error: eT } = await supabase
     .from("usuarios")
     .select("id, no_empleado, nombre_completo, departamento, turno")
     .eq("rol", "tecnico").eq("activo", true).order("nombre_completo");
 
   if (!tecs?.length) return { ok: false, msg: "Sin técnicos registrados." };
 
-  const { data: segs } = await supabase.from("seguimiento_orden")
-    .select("tecnico_id, tiempo_real_hrs, fecha_inicio, fecha_termino, orden_id, ordenes_trabajo(no_orden, nombre_pieza, estado, prioridad, fecha_solicitud, solicitante_id, usuarios(nombre_completo))");
+  const { data: segs, error: eS } = await supabase.from("seguimiento_orden")
+    .select("tecnico_id, tiempo_real_hrs, fecha_inicio, fecha_termino, orden_id");
+  if (eS) return { ok: false, msg: `Error seguimiento: ${eS.message}` };
+
+  let q = supabase.from("ordenes_trabajo")
+    .select("no_orden, nombre_pieza, estado, prioridad, fecha_solicitud");
+  if (fechaInicio) q = q.gte("fecha_solicitud", fechaInicio + "T00:00:00");
+  if (fechaFin)    q = q.lte("fecha_solicitud", fechaFin + "T23:59:59");
+  const { data: ordenes, error: eO } = await q;
+  if (eO) return { ok: false, msg: `Error órdenes: ${eO.message}` };
+
+  const ordenesMap = {};
+  (ordenes ?? []).forEach(o => { ordenesMap[o.no_orden] = o; });
 
   const segsFiltrados = (segs ?? []).filter(s => {
-    const f = s.ordenes_trabajo?.fecha_solicitud;
-    if (!f) return false;
-    const fs = f.slice(0, 10);
-    if (fechaInicio && fs < fechaInicio) return false;
-    if (fechaFin && fs > fechaFin) return false;
-    return true;
+    const o = ordenesMap[s.orden_id];
+    return !!o;
   });
 
   const HRS_SEMANA = { primero:40, segundo:37.5 };
@@ -132,7 +139,7 @@ async function exportarTecnicos(fechaInicio, fechaFin) {
       "Hrs Disponibles/Sem": hrsSem,
       "Hrs Disponibles/Mes": hrsMes,
       "Total Órdenes":      mis.length,
-      "Órdenes Terminadas": mis.filter(s=>s.ordenes_trabajo?.estado==="terminada").length,
+      "Órdenes Terminadas": mis.filter(s=>ordenesMap[s.orden_id]?.estado==="terminada").length,
       "Horas Trabajadas":   parseFloat(hrs.toFixed(2)),
       "Prom. Hrs/Orden":    mis.length ? parseFloat((hrs/mis.length).toFixed(2)) : 0,
       "Aprovech. Mensual %": hrsMes > 0 ? Math.round((hrs/hrsMes)*100) : 0,
@@ -144,13 +151,14 @@ async function exportarTecnicos(fechaInicio, fechaFin) {
   tecs.forEach(t => {
     const mis = (segsFiltrados ?? []).filter(s => s.tecnico_id === t.id);
     mis.forEach(s => {
+      const o = ordenesMap[s.orden_id] ?? {};
       detalle.push({
         "Técnico":          t.nombre_completo,
-        "No. Orden":        s.ordenes_trabajo?.no_orden ?? "—",
-        "Pieza":            s.ordenes_trabajo?.nombre_pieza ?? "—",
-        "Solicitante":      s.ordenes_trabajo?.usuarios?.nombre_completo ?? "—",
-        "Prioridad":        PRIO_LABEL[s.ordenes_trabajo?.prioridad] ?? "—",
-        "Estado":           EST_LABEL[s.ordenes_trabajo?.estado] ?? "—",
+        "No. Orden":        o.no_orden ?? "—",
+        "Pieza":            o.nombre_pieza ?? "—",
+        "Prioridad":        PRIO_LABEL[o.prioridad] ?? "—",
+        "Estado":           EST_LABEL[o.estado] ?? "—",
+        "Fecha Solicitud":  formatFecha(o.fecha_solicitud),
         "Fecha Inicio":     formatFecha(s.fecha_inicio),
         "Fecha Término":    formatFecha(s.fecha_termino),
         "Horas Reales":     s.tiempo_real_hrs ?? 0,
