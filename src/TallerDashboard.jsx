@@ -228,6 +228,19 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 ⚠️ SIN NUMERO S.E.T.C. # — NO ESTA DADA DE ALTA
               </div>
             )}
+            {orden.autorizada === true && orden.autorizado_por_nombre && (
+              <div style={{ gridColumn:"1/-1", background:C.success+"18", border:`1px solid ${C.success}55`, borderRadius:8, padding:"10px 14px", fontSize:13 }}>
+                <span style={{ color:C.success, fontWeight:700 }}>✅ Autorizado por:</span> <span style={{ color:C.text, fontWeight:600 }}>{orden.autorizado_por_nombre}</span>
+                {orden.autorizado_por_puesto && <span style={{ color:C.textSub }}> — {orden.autorizado_por_puesto}</span>}
+              </div>
+            )}
+            {orden.autorizada === false && (
+              <div style={{ gridColumn:"1/-1", background:C.danger+"18", border:`1px solid ${C.danger}55`, borderRadius:8, padding:"10px 14px", fontSize:13 }}>
+                <span style={{ color:C.danger, fontWeight:700 }}>❌ Rechazado por:</span> <span style={{ color:C.text, fontWeight:600 }}>{orden.autorizado_por_nombre ?? "—"}</span>
+                {orden.autorizado_por_puesto && <span style={{ color:C.textSub }}> — {orden.autorizado_por_puesto}</span>}
+                {orden.motivo_rechazo && <div style={{ color:C.muted, fontSize:12, marginTop:4 }}>Motivo: {orden.motivo_rechazo}</div>}
+              </div>
+            )}
             <div style={{ gridColumn:"1/-1" }}>
               <div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>Descripción</div>
               <div style={{ color:C.text, fontSize:14 }}>{orden.descripcion}</div>
@@ -352,6 +365,9 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 )}
                 {orden.autorizada === false && orden.motivo_rechazo && (
                   <div style={{ color:C.muted, fontSize:12, marginTop:6 }}>Motivo: {orden.motivo_rechazo}</div>
+                )}
+                {orden.autorizada !== null && orden.autorizada !== undefined && orden.autorizado_por_nombre && (
+                  <div style={{ fontSize:12, marginTop:6, color:C.textSub }}>Autorizado por: <strong>{orden.autorizado_por_nombre}</strong>{orden.autorizado_por_puesto ? ` — ${orden.autorizado_por_puesto}` : ""}</div>
                 )}
                 {msg && <div style={{ color:C.success, fontSize:13, marginTop:8 }}>{msg}</div>}
               </div>

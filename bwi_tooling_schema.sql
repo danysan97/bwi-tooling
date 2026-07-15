@@ -311,10 +311,14 @@ SELECT
    WHERE s2.orden_id = o.no_orden AND s2.tecnico_id IS NOT NULL) AS tecnico_ids,
   (SELECT string_agg(COALESCE(m2.nombre, s2.material_otro), ', ' ORDER BY s2.fecha_registro)
    FROM seguimiento_orden s2 LEFT JOIN materiales m2 ON s2.material_id = m2.id
-   WHERE s2.orden_id = o.no_orden AND COALESCE(m2.nombre, s2.material_otro) IS NOT NULL) AS material_usado
+   WHERE s2.orden_id = o.no_orden AND COALESCE(m2.nombre, s2.material_otro) IS NOT NULL) AS material_usado,
+  ap.nombre_completo    AS autorizado_por_nombre,
+  ap.departamento       AS autorizado_por_puesto,
+  o.motivo_rechazo
 FROM ordenes_trabajo o
 JOIN  usuarios u        ON o.solicitante_id = u.id
-LEFT JOIN areas a       ON u.area_codigo    = a.codigo;
+LEFT JOIN areas a       ON u.area_codigo    = a.codigo
+LEFT JOIN usuarios ap   ON o.autorizado_por = ap.id;
 
 CREATE VIEW grafica_ordenes_por_mes AS
 SELECT
