@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerUrlPlano, registrarEvento, parseFechaUTC } from "./lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
+import DatePicker from "./DatePicker.jsx";
 
 const C = {
   bg:"#0F1117", surface:"#181C25", border:"#242935",
@@ -203,13 +204,11 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>
                   <Label required>Fecha inicio</Label>
-                  <input type="date" value={fechaInicio} onChange={e => setFInicio(e.target.value)}
-                    style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none" }} />
+                  <DatePicker value={fechaInicio} onChange={setFInicio} />
                 </div>
                 <div>
                   <Label>Fecha término</Label>
-                  <input type="date" value={fechaTermino} onChange={e => setFTermino(e.target.value)}
-                    style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none" }} />
+                  <DatePicker value={fechaTermino} onChange={setFTermino} />
                 </div>
               </div>
               <div>
