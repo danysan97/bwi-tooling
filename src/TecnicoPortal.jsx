@@ -78,10 +78,9 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
     if (imprimiendo && printRef.current) {
       const contenido = printRef.current.innerHTML;
       const ventana = window.open("", "_blank");
-      ventana.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden #${orden.no_orden} — BWI TOOLROOM</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px}@page{size:letter;margin:10mm}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>${contenido}</body></html>`);
+      ventana.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden #${orden.no_orden} — BWI TOOLROOM</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;padding:20px}#btnImprimir{position:fixed;top:16px;right:16px;background:#3B82F6;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,.3)}#btnImprimir:hover{background:#2563EB}@page{size:letter;margin:10mm}@media print{#btnImprimir{display:none}body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><button id="btnImprimir" onclick="window.print()">🖨 Imprimir</button>${contenido}</body></html>`);
       ventana.document.close();
       ventana.focus();
-      setTimeout(() => { ventana.print(); ventana.close(); }, 500);
       setImp(false);
     }
   }, [imprimiendo]);
