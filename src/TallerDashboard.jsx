@@ -341,6 +341,11 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 </div>
                 {(orden.autorizada === null || orden.autorizada === undefined) && (
                   <>
+                    <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 14px", marginBottom:10, fontSize:13 }}>
+                      <div style={{ color:C.muted, fontSize:11, marginBottom:4 }}>Autorizando como:</div>
+                      <div style={{ fontWeight:700, color:C.text }}>{usuario.nombre_completo ?? "Admin"}</div>
+                      <div style={{ color:C.textSub, fontSize:12 }}>{usuario.puesto ?? usuario.departamento ?? ""}</div>
+                    </div>
                     <div style={{ marginBottom:8 }}>
                       <Label>Comentario *</Label>
                       <Textarea rows={2} placeholder="Escribe un comentario para autorizar o rechazar…" value={coment} onChange={e => setComent(e.target.value)} />
