@@ -89,6 +89,10 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
     }
     if (!segRow.fecha_termino && fechaTermino) {
       await registrarEvento(orden.no_orden, 'terminado', `Trabajo finalizado.`, usuario.id);
+      if (orden.estado === "en_proceso") {
+        await supabase.from("ordenes_trabajo").update({ estado: "terminada" }).eq("no_orden", orden.no_orden);
+        await registrarEvento(orden.no_orden, 'cambio_estado', `Estado cambiado a terminada.`, usuario.id, { estado_anterior: "en_proceso", estado_nuevo: "terminada" });
+      }
     }
 
     setG(false); setMsg("Guardado correctamente.");
