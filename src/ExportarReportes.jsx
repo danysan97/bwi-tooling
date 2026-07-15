@@ -102,18 +102,24 @@ async function exportarTecnicos(fechaInicio, fechaFin) {
 
   if (!tecs?.length) return { ok: false, msg: "Sin técnicos registrados." };
 
-  let q = supabase.from("seguimiento_orden")
-    .select("tecnico_id, tiempo_real_hrs, fecha_inicio, fecha_termino, orden_id, ordenes_trabajo!inner(no_orden, nombre_pieza, estado, prioridad, fecha_solicitud, solicitante_id, usuarios(nombre_completo))");
-  if (fechaInicio) q = q.gte("ordenes_trabajo.fecha_solicitud", fechaInicio + "T00:00:00");
-  if (fechaFin)    q = q.lte("ordenes_trabajo.fecha_solicitud", fechaFin + "T23:59:59");
-  const { data: segs } = await q;
+  const { data: segs } = await supabase.from("seguimiento_orden")
+    .select("tecnico_id, tiempo_real_hrs, fecha_inicio, fecha_termino, orden_id, ordenes_trabajo(no_orden, nombre_pieza, estado, prioridad, fecha_solicitud, solicitante_id, usuarios(nombre_completo))");
+
+  const segsFiltrados = (segs ?? []).filter(s => {
+    const f = s.ordenes_trabajo?.fecha_solicitud;
+    if (!f) return false;
+    const fs = f.slice(0, 10);
+    if (fechaInicio && fs < fechaInicio) return false;
+    if (fechaFin && fs > fechaFin) return false;
+    return true;
+  });
 
   const HRS_SEMANA = { primero:40, segundo:37.5 };
   const HRS_MES    = { primero:160, segundo:150 };
 
   // Hoja 1: Resumen por técnico
   const resumenTec = tecs.map(t => {
-    const mis  = (segs ?? []).filter(s => s.tecnico_id === t.id);
+    const mis  = (segsFiltrados ?? []).filter(s => s.tecnico_id === t.id);
     const hrs  = mis.reduce((s,x) => s+(Number(x.tiempo_real_hrs)||0), 0);
     const hrsSem = HRS_SEMANA[t.turno ?? "primero"];
     const hrsMes = HRS_MES[t.turno ?? "primero"];
@@ -136,7 +142,7 @@ async function exportarTecnicos(fechaInicio, fechaFin) {
   // Hoja 2: Detalle de órdenes por técnico
   const detalle = [];
   tecs.forEach(t => {
-    const mis = (segs ?? []).filter(s => s.tecnico_id === t.id);
+    const mis = (segsFiltrados ?? []).filter(s => s.tecnico_id === t.id);
     mis.forEach(s => {
       detalle.push({
         "Técnico":          t.nombre_completo,
