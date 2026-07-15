@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerUrlPlano, registrarEvento, parseFechaUTC } from "./lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import ImprimirOrden from "./ImprimirOrden.jsx";
+import { createPortal } from "react-dom";
 
 const C = {
   bg:"#0F1117", surface:"#181C25", border:"#242935",
@@ -254,9 +255,12 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
           )}
         </div>
       </div>
-      <div ref={printRef} style={{ position:"absolute", left:-9999, top:0 }}>
-        <ImprimirOrden orden={o} />
-      </div>
+      {createPortal(
+        <div ref={printRef} style={{ position:"fixed", left:-9999, top:0, pointerEvents:"none" }}>
+          <ImprimirOrden orden={o} />
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
