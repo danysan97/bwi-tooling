@@ -1,5 +1,14 @@
+-- Agregar tipo de evento 'autorizacion' al enum
+DO $$ BEGIN
+  ALTER TYPE tipo_evento_orden ADD VALUE 'autorizacion';
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 -- Recrear vista_ordenes con autorizado_por_nombre, autorizado_por_puesto, motivo_rechazo
-CREATE OR REPLACE VIEW vista_ordenes AS
+DROP VIEW IF EXISTS vista_ordenes;
+
+CREATE VIEW vista_ordenes AS
 SELECT
   o.no_orden,
   o.fecha_solicitud,
