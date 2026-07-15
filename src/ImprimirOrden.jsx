@@ -150,8 +150,8 @@ export default function ImprimirOrden({ orden, onCerrar }) {
               <div style={{ flex:4, padding:"4px 8px", borderRight:`1px solid ${GRAY_BORDER}` }}>
                 <div style={{ fontSize:7, color:"#666", textTransform:"uppercase", letterSpacing:0.5 }}>Autorización urgencia</div>
                 <div style={{ fontSize:11, minHeight:16, marginTop:2 }}>{orden.autorizada === true ? "✅ AUTORIZADA" : orden.autorizada === false ? "❌ RECHAZADA" : "___________________________"}</div>
-                {orden.autorizada === true && orden.autorizado_por_nombre && (
-                  <div style={{ fontSize:9, color:"#333", marginTop:2 }}>Autorizado por: {orden.autorizado_por_nombre}{orden.autorizado_por_puesto ? ` — ${orden.autorizado_por_puesto}` : ""}</div>
+                {orden.autorizada === true && (orden.nombre_autoriza || orden.autorizado_por_nombre) && (
+                  <div style={{ fontSize:9, color:"#333", marginTop:2 }}>Autorizado por: {orden.nombre_autoriza ?? orden.autorizado_por_nombre}{(orden.puesto_autoriza ?? orden.autorizado_por_puesto) ? ` — ${orden.puesto_autoriza ?? orden.autorizado_por_puesto}` : ""}</div>
                 )}
                 {orden.autorizada === false && orden.motivo_rechazo && (
                   <div style={{ fontSize:9, color:"#c00", marginTop:2 }}>Motivo: {orden.motivo_rechazo}</div>
