@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerUrlPlano, registrarEvento, parseFechaUTC } from "./lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import ImprimirOrden from "./ImprimirOrden.jsx";
@@ -64,6 +64,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
   const [msg, setMsg] = useState("");
   const [planoUrl, setPlanoUrl] = useState(null);
   const [imprimiendo, setImp] = useState(false);
+  const printRef = useRef();
 
   useEffect(() => {
     cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []));
@@ -71,6 +72,18 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
       obtenerUrlPlano(orden.archivo_url).then(({ url }) => setPlanoUrl(url));
     }
   }, [orden.no_orden]);
+
+  useEffect(() => {
+    if (imprimiendo && printRef.current) {
+      const contenido = printRef.current.innerHTML;
+      const ventana = window.open("", "_blank");
+      ventana.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden #${orden.no_orden} — BWI TOOLROOM</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px}@page{size:letter;margin:10mm}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>${contenido}</body></html>`);
+      ventana.document.close();
+      ventana.focus();
+      setTimeout(() => { ventana.print(); ventana.close(); }, 500);
+      setImp(false);
+    }
+  }, [imprimiendo]);
 
   const guardar = async () => {
     if (!fechaInicio) { setMsg("La fecha de inicio es obligatoria."); return; }
@@ -118,8 +131,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
             <div style={{ color:C.textSub, fontSize:13, marginTop:4 }}>{o.nombre_pieza}</div>
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            {imprimiendo && <ImprimirOrden orden={o} />}
-            <button onClick={() => setImp(!imprimiendo)} style={{ background:C.border, color:C.textSub, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>{imprimiendo ? "Cerrar print" : "🖨 Imprimir"}</button>
+            <button onClick={() => setImp(!imprimiendo)} style={{ background:imprimiendo?C.accent:C.border, color:imprimiendo?"#fff":C.textSub, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>{imprimiendo ? "Cerrar print" : "🖨 Imprimir"}</button>
             <button onClick={onCerrar} style={{ background:C.border, color:C.muted, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:13 }}>✕ Cerrar</button>
           </div>
         </div>
@@ -240,6 +252,11 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
               })}
             </div>
           )}
+        </div>
+
+        {/* Print content (hidden, used to capture HTML for print window) */}
+        <div ref={printRef} style={{ position:"absolute", left:-9999, top:0 }}>
+          <ImprimirOrden orden={o} />
         </div>
       </div>
     </div>
