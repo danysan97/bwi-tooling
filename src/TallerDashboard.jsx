@@ -229,16 +229,22 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               </div>
             )}
             {orden.autorizada === true && orden.autorizado_por_nombre && (
-              <div style={{ gridColumn:"1/-1", background:C.success+"18", border:`1px solid ${C.success}55`, borderRadius:8, padding:"10px 14px", fontSize:13 }}>
-                <span style={{ color:C.success, fontWeight:700 }}>✅ Autorizado por:</span> <span style={{ color:C.text, fontWeight:600 }}>{orden.autorizado_por_nombre}</span>
-                {orden.autorizado_por_puesto && <span style={{ color:C.textSub }}> — {orden.autorizado_por_puesto}</span>}
+              <div style={{ gridColumn:"1/-1", background:C.success+"18", border:`1px solid ${C.success}55`, borderRadius:8, padding:"12px 16px" }}>
+                <div style={{ color:C.success, fontWeight:700, fontSize:14, marginBottom:6 }}>✅ Autorizada</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:13 }}>
+                  <div><div style={{ color:C.muted, fontSize:11 }}>Autorizado por (Nombre)</div><div style={{ color:C.text, fontWeight:600 }}>{orden.autorizado_por_nombre}</div></div>
+                  <div><div style={{ color:C.muted, fontSize:11 }}>Puesto</div><div style={{ color:C.text, fontWeight:600 }}>{orden.autorizado_por_puesto ?? "—"}</div></div>
+                </div>
               </div>
             )}
             {orden.autorizada === false && (
-              <div style={{ gridColumn:"1/-1", background:C.danger+"18", border:`1px solid ${C.danger}55`, borderRadius:8, padding:"10px 14px", fontSize:13 }}>
-                <span style={{ color:C.danger, fontWeight:700 }}>❌ Rechazado por:</span> <span style={{ color:C.text, fontWeight:600 }}>{orden.autorizado_por_nombre ?? "—"}</span>
-                {orden.autorizado_por_puesto && <span style={{ color:C.textSub }}> — {orden.autorizado_por_puesto}</span>}
-                {orden.motivo_rechazo && <div style={{ color:C.muted, fontSize:12, marginTop:4 }}>Motivo: {orden.motivo_rechazo}</div>}
+              <div style={{ gridColumn:"1/-1", background:C.danger+"18", border:`1px solid ${C.danger}55`, borderRadius:8, padding:"12px 16px" }}>
+                <div style={{ color:C.danger, fontWeight:700, fontSize:14, marginBottom:6 }}>❌ Rechazada</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:13 }}>
+                  <div><div style={{ color:C.muted, fontSize:11 }}>Rechazado por (Nombre)</div><div style={{ color:C.text, fontWeight:600 }}>{orden.autorizado_por_nombre ?? "—"}</div></div>
+                  <div><div style={{ color:C.muted, fontSize:11 }}>Puesto</div><div style={{ color:C.text, fontWeight:600 }}>{orden.autorizado_por_puesto ?? "—"}</div></div>
+                </div>
+                {orden.motivo_rechazo && <div style={{ color:C.muted, fontSize:12, marginTop:8, borderTop:`1px solid ${C.border}`, paddingTop:8 }}>Motivo: {orden.motivo_rechazo}</div>}
               </div>
             )}
             <div style={{ gridColumn:"1/-1" }}>
@@ -336,15 +342,16 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 {(orden.autorizada === null || orden.autorizada === undefined) && (
                   <>
                     <div style={{ marginBottom:8 }}>
-                      <Label>Comentario (opcional)</Label>
-                      <Textarea rows={2} placeholder="Comentario al autorizar o rechazar…" value={coment} onChange={e => setComent(e.target.value)} />
+                      <Label>Comentario *</Label>
+                      <Textarea rows={2} placeholder="Escribe un comentario para autorizar o rechazar…" value={coment} onChange={e => setComent(e.target.value)} />
                     </div>
                     <div style={{ display:"flex", gap:8 }}>
                       <button onClick={async () => {
+                        if (!coment.trim()) { setMsg("Escribe un comentario antes de autorizar."); return; }
                         setG(true);
                         await supabase.from("ordenes_trabajo").update({ autorizada: true, autorizado_por: usuario.id }).eq("no_orden", orden.no_orden);
                         const nombre = usuario.nombre_completo ?? "Admin";
-                        const detalle = coment.trim() ? `Orden autorizada por ${nombre}. ${coment.trim()}` : `Orden autorizada por ${nombre}.`;
+                        const detalle = `Orden autorizada por ${nombre}. ${coment.trim()}`;
                         await registrarEvento(orden.no_orden, 'autorizacion', detalle, usuario.id);
                         setG(false); setMsg("Orden autorizada."); onActualizado();
                       }} disabled={guardando} style={{ flex:1, background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"10px 0", fontWeight:700, cursor:"pointer", fontSize:13 }}>
