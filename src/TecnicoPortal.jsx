@@ -1,8 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerUrlPlano, registrarEvento, parseFechaUTC } from "./lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
-import ImprimirOrden from "./ImprimirOrden.jsx";
-import { createPortal } from "react-dom";
 
 const C = {
   bg:"#0F1117", surface:"#181C25", border:"#242935",
@@ -64,8 +62,6 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
   const [guardando, setG] = useState(false);
   const [msg, setMsg] = useState("");
   const [planoUrl, setPlanoUrl] = useState(null);
-  const [imprimiendo, setImp] = useState(false);
-  const printRef = useRef();
 
   useEffect(() => {
     cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []));
@@ -73,17 +69,6 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
       obtenerUrlPlano(orden.archivo_url).then(({ url }) => setPlanoUrl(url));
     }
   }, [orden.no_orden]);
-
-  useEffect(() => {
-    if (imprimiendo && printRef.current) {
-      const contenido = printRef.current.innerHTML;
-      const ventana = window.open("", "_blank");
-      ventana.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden #${orden.no_orden} — BWI TOOLROOM</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;padding:20px}#btnImprimir{position:fixed;top:16px;right:16px;background:#3B82F6;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,.3)}#btnImprimir:hover{background:#2563EB}@page{size:letter;margin:10mm}@media print{#btnImprimir{display:none}body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><button id="btnImprimir" onclick="window.print()">🖨 Imprimir</button>${contenido}</body></html>`);
-      ventana.document.close();
-      ventana.focus();
-      setImp(false);
-    }
-  }, [imprimiendo]);
 
   const guardar = async () => {
     if (!fechaInicio) { setMsg("La fecha de inicio es obligatoria."); return; }
@@ -116,6 +101,36 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
   const prio = PRIO[o.prioridad] ?? {};
   const oDate = o.fecha_solicitud ? parseFechaUTC(o.fecha_solicitud) : null;
 
+  const abrirImpresion = () => {
+    const html = `<div style="padding:20px;font-family:Arial,sans-serif;font-size:11px;color:#000">
+      <div style="display:flex;align-items:center;margin-bottom:8px">
+        <div style="background:#1B3A6B;color:#fff;font-weight:900;font-size:18px;padding:8px 16px;letter-spacing:2;margin-right:12px;border-radius:4">BWI</div>
+        <div style="flex:1;text-align:center"><div style="font-size:15px;font-weight:700;color:#1B3A6B;text-transform:uppercase;letter-spacing:1">ORDEN DE TRABAJO PARA TALLER</div><div style="font-size:9px;color:#666;margin-top:2">TOOLROOM — TALLER MÁQUINAS Y HERRAMIENTAS</div></div>
+        <div style="text-align:right;font-size:9px;color:#666"><div style="font-weight:700;font-size:13px;color:#1B3A6B">No. Orden: #${o.no_orden}</div><div>F-1100.C.03-02</div><div>Rev. 06</div></div>
+      </div>
+      <div style="border:2px solid #1B3A6B;border-radius:4;overflow:hidden">
+        <div style="display:flex;border-bottom:1px solid #ccc"><div style="flex:3;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Solicitante</div><div style="font-size:11px;margin-top:2">${o.solicitante_nombre||""}</div></div><div style="flex:1;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">No. de empleado</div><div style="font-size:11px;margin-top:2">${o.solicitante_empleado||""}</div></div><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Área</div><div style="font-size:11px;margin-top:2">${o.area_codigo?`${o.area_codigo} — ${o.area_nombre||""}`:o.area_nombre||""}</div></div><div style="flex:2;padding:4px 8px"><div style="font-size:7px;color:#666;text-transform:uppercase">Departamento</div><div style="font-size:11px;margin-top:2">${o.departamento||""}</div></div></div>
+        <div style="display:flex;border-bottom:1px solid #ccc"><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Fecha de solicitud</div><div style="font-size:11px;margin-top:2">${o.fecha_solicitud?new Date(o.fecha_solicitud).toLocaleDateString("es-MX"):""}</div></div><div style="flex:4;padding:4px 8px"><div style="font-size:7px;color:#666;text-transform:uppercase">Prioridad</div><div style="font-size:11px;font-weight:700;margin-top:2">${PRIO[o.prioridad]?.label||o.prioridad}</div></div></div>
+        <div style="background:#F5F5F5;padding:3px 8px;font-size:8px;font-weight:700;color:#1B3A6B;text-transform:uppercase;border-bottom:1px solid #ccc">DATOS DE LA PIEZA</div>
+        <div style="display:flex;border-bottom:1px solid #ccc"><div style="flex:4;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Nombre de la pieza</div><div style="font-size:11px;font-weight:700;margin-top:2">${o.nombre_pieza||""}</div></div><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">S.E.T.C. #</div><div style="font-size:11px;margin-top:2">${o.setc_numero||""}</div></div><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">No. de plano</div><div style="font-size:11px;margin-top:2">${o.no_plano||""}</div></div><div style="flex:1;padding:4px 8px"><div style="font-size:7px;color:#666;text-transform:uppercase">Cantidad</div><div style="font-size:11px;margin-top:2">${o.cantidad||""}</div></div></div>
+        <div style="display:flex;border-bottom:1px solid #ccc"><div style="flex:3;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">No. de máquina / Fixtura / Equipo</div><div style="font-size:11px;margin-top:2">${o.no_maquina||""}</div></div><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Línea / Celda</div><div style="font-size:11px;margin-top:2">${o.linea_celda||"—"}</div></div><div style="flex:4;padding:4px 8px"><div style="font-size:7px;color:#666;text-transform:uppercase">Autorización urgencia</div><div style="font-size:11px;margin-top:2">${o.autorizada===true?(o.nombre_autoriza?"Autorizado por: "+o.nombre_autoriza+(o.puesto_autoriza?" — "+o.puesto_autoriza:""):"✅ AUTORIZADA"):o.autorizada===false?"❌ RECHAZADA":"___________________________"}</div></div></div>
+        <div style="background:#F5F5F5;padding:3px 8px;font-size:8px;font-weight:700;color:#1B3A6B;text-transform:uppercase;border-bottom:1px solid #ccc;border-top:1px solid #ccc">DESCRIPCIÓN DEL TRABAJO A REALIZAR</div>
+        <div style="padding:6px 8px;min-height:60px;border-bottom:1px solid #ccc;font-size:11px;line-height:1.5">${o.descripcion||""}</div>
+        <div style="background:#1B3A6B;padding:3px 8px;font-size:8px;font-weight:700;color:#fff;text-transform:uppercase">PARA SER LLENADO POR ENCARGADO DEL TALLER</div>
+        <div style="display:flex;border-bottom:1px solid #ccc"><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Fecha inicio</div><div style="font-size:11px;margin-top:2">${o.fecha_inicio||""}</div></div><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Fecha término</div><div style="font-size:11px;margin-top:2">${o.fecha_termino||""}</div></div><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Horas totales</div><div style="font-size:11px;margin-top:2">${o.tiempo_real_hrs||""}</div></div><div style="flex:3;padding:4px 8px"><div style="font-size:7px;color:#666;text-transform:uppercase">Técnico(s) que realizó</div><div style="font-size:11px;margin-top:2">${o.tecnico_nombre||""}</div></div></div>
+        <div style="display:flex;border-bottom:1px solid #ccc"><div style="flex:4;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Material utilizado</div><div style="font-size:11px;margin-top:2">${o.material_usado||""}</div></div><div style="flex:2;padding:4px 8px"><div style="font-size:7px;color:#666;text-transform:uppercase">Estado</div><div style="font-size:11px;margin-top:2">${o.estado==="terminada"?(o.entregada?"✅ TERMINADA / ENTREGADA":"✅ TERMINADA — Pendiente de entrega"):o.estado==="en_proceso"?"🔧 EN PROCESO":o.estado==="cancelada"?"❌ CANCELADA":"🆕 NUEVA"}</div></div></div>
+        <div style="padding:6px 8px;min-height:40px;border-top:1px solid #ccc;font-size:11px"><span style="font-size:8px;color:#666;text-transform:uppercase">Comentarios: </span>${o.comentarios||""}</div>
+        <div style="background:#F5F5F5;border-top:1px solid #ccc;display:flex"><div style="flex:1;padding:12px 8px;border-right:1px solid #ccc;text-align:center"><div style="border-top:1px solid #000;margin-top:24px;padding-top:4px;font-size:9px;color:#666">Firma Gerente Tool Room / Autorización urgencia</div></div><div style="flex:1;padding:12px 8px;text-align:center"><div style="border-top:1px solid #000;margin-top:24px;padding-top:4px;font-size:9px;color:#666">Firma Conformidad del Solicitante</div></div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:8px;color:#999"><span>F-1100.C.03-02 Rev. 06</span><span>BWI Group — Departamento de TOOLROOM</span><span>Impreso: ${new Date().toLocaleDateString("es-MX")}</span></div>
+      <div style="margin-top:8px;padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:8px;color:#555;line-height:1.6"><strong>PRIORIDADES:</strong> 1-Seguridad · 2-Queja de cliente · 3-Máquina parada · 4-Trabajo rápido · 5-Fabricación</div>
+    </div>`;
+    const ventana = window.open("", "_blank");
+    ventana.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orden #${o.no_orden} — BWI TOOLROOM</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;padding:20px}#btnImprimir{position:fixed;top:16px;right:16px;background:#3B82F6;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,.3)}#btnImprimir:hover{background:#2563EB}@page{size:letter;margin:10mm}@media print{#btnImprimir{display:none}body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><button id="btnImprimir" onclick="window.print()">🖨 Imprimir</button>${html}</body></html>`);
+    ventana.document.close();
+    ventana.focus();
+  };
+
   return (
     <div style={{ position:"fixed", inset:0, background:"#000000dd", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
       <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, width:"100%", maxWidth:800, maxHeight:"92vh", overflowY:"auto" }}>
@@ -131,7 +146,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
             <div style={{ color:C.textSub, fontSize:13, marginTop:4 }}>{o.nombre_pieza}</div>
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <button onClick={() => setImp(!imprimiendo)} style={{ background:imprimiendo?C.accent:C.border, color:imprimiendo?"#fff":C.textSub, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>{imprimiendo ? "Cerrar print" : "🖨 Imprimir"}</button>
+            <button onClick={abrirImpresion} style={{ background:C.border, color:C.textSub, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>🖨 Imprimir</button>
             <button onClick={onCerrar} style={{ background:C.border, color:C.muted, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:13 }}>✕ Cerrar</button>
           </div>
         </div>
@@ -254,12 +269,6 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
           )}
         </div>
       </div>
-      {createPortal(
-        <div ref={printRef} style={{ position:"fixed", left:-9999, top:0, pointerEvents:"none" }}>
-          <ImprimirOrden orden={o} />
-        </div>,
-        document.body
-      )}
     </div>
   );
 }
