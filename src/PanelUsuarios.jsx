@@ -58,7 +58,7 @@ const ErrMsg = ({ msg }) => msg ? <div style={{ color:C.danger, fontSize:11, mar
 // ── Modal crear / editar usuario ─────────────────────────────
 function ModalUsuario({ usuario, onCerrar, onGuardado }) {
   const esNuevo = !usuario;
-  const necesitaPin = (rol) => ["administrador","superadmin"].includes(rol);
+  const necesitaPin = (rol) => ["administrador","superadmin","tecnico"].includes(rol);
 
   const [form, setForm] = useState({
     no_empleado:     usuario?.no_empleado     ?? "",
@@ -419,7 +419,7 @@ export default function PanelUsuarios({ usuarioActual }) {
                       {esSuperAdmin && (
                         <div style={{ display:"flex", gap:6 }}>
                           <button onClick={() => setModalEdit(u)} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}44`, borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:11, fontWeight:600 }}>Editar</button>
-                          {["administrador","superadmin"].includes(u.rol) && (
+                          {["administrador","superadmin","tecnico"].includes(u.rol) && (
                             <button onClick={() => setModalPin(u)} style={{ background:C.warn+"22", color:C.warn, border:`1px solid ${C.warn}44`, borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:11, fontWeight:600 }}>PIN</button>
                           )}
                           <button onClick={() => toggleActivo(u)} disabled={toggling===u.id} style={{ background:u.activo?C.danger+"22":C.success+"22", color:u.activo?C.danger:C.success, border:`1px solid ${u.activo?C.danger:C.success}44`, borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:11, fontWeight:600 }}>

@@ -14,7 +14,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-export const ROLES_CON_PIN = ['administrador', 'superadmin']
+export const ROLES_CON_PIN = ['administrador', 'superadmin', 'tecnico']
 
 // ── Detecta si el empleado necesita PIN ──────────────────────
 export async function necesitaPin(no_empleado) {
@@ -123,7 +123,7 @@ export async function crearUsuario({ no_empleado, nombre_completo, rol, area_cod
     debe_cambiar_pin: necesita,
   }
   if (necesita) {
-    if (!pin || pin.length < 4) return { error: 'Los administradores deben tener un PIN de al menos 4 dígitos.' }
+    if (!pin || pin.length < 4) return { error: 'Este rol requiere un PIN de al menos 4 dígitos.' }
     const { data, error } = await supabase.rpc('crear_usuario_admin', {
       p_no_empleado:     payload.no_empleado,
       p_nombre_completo: payload.nombre_completo,
@@ -212,6 +212,33 @@ export async function obtenerMisOrdenes(solicitante_id) {
     .eq('solicitante_id', solicitante_id)
     .order('fecha_solicitud', { ascending: false })
   return { data: data ?? [], error }
+}
+
+// ── Órdenes asignadas a un técnico ──────────────────────────
+export async function obtenerOrdenesTecnico(tecnico_id) {
+  const { data, error } = await supabase
+    .from('seguimiento_orden')
+    .select('id, fecha_inicio, fecha_termino, tiempo_real_hrs, material_id, material_otro, comentarios, orden_id, ordenes_trabajo(*)')
+    .eq('tecnico_id', tecnico_id)
+    .order('fecha_registro', { ascending: false })
+  return { data: data ?? [], error }
+}
+
+export async function obtenerPerfilTecnico(tecnico_id) {
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('id, no_empleado, nombre_completo, departamento, turno')
+    .eq('id', tecnico_id)
+    .single()
+  return { data, error }
+}
+
+export async function actualizarSeguimientoTecnico(seguimiento_id, campos) {
+  const { error } = await supabase
+    .from('seguimiento_orden')
+    .update(campos)
+    .eq('id', seguimiento_id)
+  return { error }
 }
 
 export async function actualizarEstado(no_orden, estado_nuevo, cambiado_por_id, comentario = null) {

@@ -3,8 +3,10 @@ import { obtenerSesion, cerrarSesion, loginSinPin, loginConPin, necesitaPin } fr
 import TallerDashboard   from './TallerDashboard.jsx'
 import CapturaManual     from './CapturaManual.jsx'
 import PortalSolicitante from './PortalSolicitante.jsx'
+import TecnicoPortal     from './TecnicoPortal.jsx'
 
 const ROLES_ADMIN = ['administrador', 'superadmin']
+const ROL_TECNICO = 'tecnico'
 
 const C = {
   bg:"#0F1117", surface:"#181C25", border:"#242935",
@@ -83,7 +85,7 @@ function PantallaLogin({ onLogin }) {
             <>
               <button onClick={() => { setPaso("empleado"); setPin(""); setErr("") }} style={{ background:"none", border:"none", color:C.muted, cursor:"pointer", fontSize:13, marginBottom:16, padding:0 }}>← Cambiar número</button>
               <div style={{ color:C.text, fontWeight:700, fontSize:18, marginBottom:4 }}>Ingresa tu PIN</div>
-              <div style={{ color:C.muted, fontSize:13, marginBottom:24 }}>Administrador · <strong style={{ color:C.textSub }}>{empleado}</strong></div>
+              <div style={{ color:C.muted, fontSize:13, marginBottom:24 }}>Ingresa tu PIN de acceso · <strong style={{ color:C.textSub }}>{empleado}</strong></div>
               <div style={{ marginBottom:20 }}>
                 <label style={{ display:"block", color:C.textSub, fontSize:12, fontWeight:600, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>PIN *</label>
                 <input type="password" placeholder="••••••" value={pin}
@@ -114,7 +116,9 @@ export default function App() {
     const s = obtenerSesion()
     if (s) {
       setUsuario(s)
-      setVista(ROLES_ADMIN.includes(s.rol) ? 'dashboard' : 'portal')
+      if (ROLES_ADMIN.includes(s.rol)) setVista('dashboard')
+      else if (s.rol === ROL_TECNICO) setVista('tecnico')
+      else setVista('portal')
     } else {
       setVista('login')
     }
@@ -122,7 +126,9 @@ export default function App() {
 
   const onLogin = u => {
     setUsuario(u)
-    setVista(ROLES_ADMIN.includes(u.rol) ? 'dashboard' : 'portal')
+    if (ROLES_ADMIN.includes(u.rol)) setVista('dashboard')
+    else if (u.rol === ROL_TECNICO) setVista('tecnico')
+    else setVista('portal')
   }
 
   const salir = () => {
@@ -134,6 +140,7 @@ export default function App() {
   if (vista === 'cargando') return null
   if (vista === 'login')    return <PantallaLogin onLogin={onLogin} />
   if (vista === 'portal')   return <PortalSolicitante usuario={usuario} onSalir={salir} />
+  if (vista === 'tecnico')  return <TecnicoPortal usuario={usuario} onSalir={salir} />
   if (vista === 'dashboard') return <TallerDashboard usuario={usuario} onCapturarManual={() => setVista('manual')} onSalir={salir} />
   if (vista === 'manual')   return <CapturaManual usuario={usuario} onVolver={() => setVista('dashboard')} />
   return null

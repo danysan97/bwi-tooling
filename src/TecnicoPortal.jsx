@@ -1,0 +1,501 @@
+import { useState, useEffect } from "react";
+import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerUrlPlano, registrarEvento, parseFechaUTC } from "./lib/supabase";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
+import ImprimirOrden from "./ImprimirOrden.jsx";
+
+const C = {
+  bg:"#0F1117", surface:"#181C25", border:"#242935",
+  accent:"#3B82F6", success:"#22C55E", warn:"#F59E0B",
+  danger:"#EF4444", muted:"#6B7280", text:"#F1F5F9", textSub:"#94A3B8",
+  purple:"#8B5CF6",
+};
+
+const PRIO = {
+  "1_seguridad":{ label:"Seguridad", color:C.danger },
+  "2_queja_cliente":{ label:"Queja cliente", color:C.warn },
+  "3_maquina_parada":{ label:"Máq. parada", color:"#F97316" },
+  "4_trabajo_rapido":{ label:"Trabajo rápido", color:C.accent },
+  "5_fabricacion":{ label:"Fabricación", color:C.purple },
+};
+
+const EST_COLOR = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted };
+const EST_LABEL = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada" };
+
+const HRS_DIA   = { primero: 8,   segundo: 7.5  };
+const HRS_SEMANA = { primero: 40,  segundo: 37.5 };
+const HRS_MES    = { primero: 160, segundo: 150  };
+
+const Label = ({ children, required }) => (
+  <label style={{ display:"block", color:C.textSub, fontSize:11, fontWeight:600, textTransform:"uppercase", letterSpacing:1, marginBottom:5 }}>
+    {children}{required && <span style={{ color:C.danger, marginLeft:3 }}>*</span>}
+  </label>
+);
+
+const Badge = ({ color, label }) => (
+  <span style={{ background:color+"22", color, border:`1px solid ${color}55`, borderRadius:6, padding:"2px 10px", fontSize:11, fontWeight:600, whiteSpace:"nowrap" }}>{label}</span>
+);
+
+function getSemanaActual() {
+  const hoy = new Date();
+  const dia = hoy.getDay() || 7;
+  const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - dia + 1); lunes.setHours(0,0,0,0);
+  const vier = new Date(lunes); vier.setDate(lunes.getDate() + 4); vier.setHours(23,59,59,999);
+  return { inicio: lunes, fin: vier };
+}
+
+function getMesActual() {
+  const hoy = new Date();
+  const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const fin = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0, 23, 59, 59);
+  return { inicio, fin };
+}
+
+// ── Modal detalle de orden ──────────────────────────────────
+function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado }) {
+  const [tab, setTab] = useState("info");
+  const [fechaInicio, setFInicio] = useState(segRow?.fecha_inicio ?? "");
+  const [fechaTermino, setFTermino] = useState(segRow?.fecha_termino ?? "");
+  const [horas, setHoras] = useState(segRow?.tiempo_real_hrs ?? "");
+  const [materialId, setMatId] = useState(segRow?.material_id ?? "");
+  const [materialOtro, setMatOtro] = useState(segRow?.material_otro ?? "");
+  const [comentarios, setComent] = useState(segRow?.comentarios ?? "");
+  const [historial, setHistorial] = useState([]);
+  const [guardando, setG] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [planoUrl, setPlanoUrl] = useState(null);
+  const [imprimiendo, setImp] = useState(false);
+
+  useEffect(() => {
+    cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []));
+    if (orden.archivo_url) {
+      obtenerUrlPlano(orden.archivo_url).then(({ url }) => setPlanoUrl(url));
+    }
+  }, [orden.no_orden]);
+
+  const guardar = async () => {
+    if (!fechaInicio) { setMsg("La fecha de inicio es obligatoria."); return; }
+    setG(true); setMsg("");
+    await supabase.from("seguimiento_orden").update({
+      fecha_inicio:  fechaInicio || null,
+      fecha_termino: fechaTermino || null,
+      tiempo_real_hrs: horas ? Number(horas) : null,
+      material_id:   materialId || null,
+      material_otro: materialOtro || null,
+      comentarios:   comentarios || null,
+    }).eq("id", segRow.id);
+
+    if (!segRow.fecha_inicio && fechaInicio) {
+      await registrarEvento(orden.no_orden, 'inicio', `Trabajo iniciado.`, usuario.id);
+    }
+    if (!segRow.fecha_termino && fechaTermino) {
+      await registrarEvento(orden.no_orden, 'terminado', `Trabajo finalizado.`, usuario.id);
+    }
+
+    setG(false); setMsg("Guardado correctamente.");
+    onGuardado();
+  };
+
+  const o = orden;
+  const prio = PRIO[o.prioridad] ?? {};
+  const oDate = o.fecha_solicitud ? parseFechaUTC(o.fecha_solicitud) : null;
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"#000000dd", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, width:"100%", maxWidth:800, maxHeight:"92vh", overflowY:"auto" }}>
+
+        {/* Header */}
+        <div style={{ padding:"18px 24px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10 }}>
+          <div>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ color:C.accent, fontWeight:800, fontSize:20 }}>#{o.no_orden}</span>
+              <Badge color={prio.color} label={prio.label} />
+              <Badge color={EST_COLOR[o.estado]} label={EST_LABEL[o.estado]} />
+            </div>
+            <div style={{ color:C.textSub, fontSize:13, marginTop:4 }}>{o.nombre_pieza}</div>
+          </div>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            {imprimiendo && <ImprimirOrden orden={o} />}
+            <button onClick={() => setImp(!imprimiendo)} style={{ background:C.border, color:C.textSub, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>{imprimiendo ? "Cerrar print" : "🖨 Imprimir"}</button>
+            <button onClick={onCerrar} style={{ background:C.border, color:C.muted, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:13 }}>✕ Cerrar</button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ padding:"0 24px", borderBottom:`1px solid ${C.border}`, display:"flex", gap:0 }}>
+          {[["info","Información"],["mi_avance","Mi avance"],["historial","Historial"]].map(([k,l]) => (
+            <button key={k} onClick={() => setTab(k)} style={{ background:"none", border:"none", borderBottom:`2px solid ${tab===k?C.accent:"transparent"}`, color:tab===k?C.accent:C.muted, padding:"12px 18px", cursor:"pointer", fontWeight:600, fontSize:13 }}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {/* Contenido */}
+        <div style={{ padding:"20px 24px" }}>
+          {tab === "info" && (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+              <InfoRow label="Folio" value={`#${o.no_orden}`} />
+              <InfoRow label="Fecha solicitud" value={oDate ? oDate.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—"} />
+              <InfoRow label="Pieza" value={o.nombre_pieza} />
+              <InfoRow label="Solicitante" value={o.solicitante_nombre ?? "—"} />
+              <InfoRow label="SETC" value={o.setc_numero ?? "—"} />
+              <InfoRow label="No. plano" value={o.no_plano ?? "—"} />
+              <InfoRow label="No. máquina" value={o.no_maquina ?? "—"} />
+              <InfoRow label="Línea / celda" value={o.linea_celda ?? "—"} />
+              <InfoRow label="Cantidad" value={o.cantidad} />
+              <InfoRow label="Prioridad" value={prio.label} color={prio.color} />
+              <InfoRow label="Estado" value={EST_LABEL[o.estado]} color={EST_COLOR[o.estado]} />
+              <InfoRow label="Técnicos" value={o.tecnico_nombre ?? "—"} />
+              {o.descripcion && (
+                <div style={{ gridColumn:"1/-1" }}>
+                  <div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>Descripción</div>
+                  <div style={{ color:C.text, fontSize:13, lineHeight:1.5 }}>{o.descripcion}</div>
+                </div>
+              )}
+              {planoUrl && (
+                <div style={{ gridColumn:"1/-1", marginTop:8 }}>
+                  <div style={{ color:C.muted, fontSize:11, marginBottom:6 }}>Plano / Archivo adjunto</div>
+                  {o.archivo_nombre?.match(/\.(pdf)$/i) ? (
+                    <iframe src={planoUrl} style={{ width:"100%", height:400, border:`1px solid ${C.border}`, borderRadius:8 }} title="Plano" />
+                  ) : (
+                    <a href={planoUrl} target="_blank" rel="noopener noreferrer">
+                      <img src={planoUrl} alt="Plano" style={{ maxWidth:"100%", maxHeight:400, borderRadius:8, border:`1px solid ${C.border}` }} />
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "mi_avance" && segRow && (
+            <div style={{ display:"grid", gap:14, maxWidth:500 }}>
+              {msg && <div style={{ background:C.success+"18", border:`1px solid ${C.success}55`, borderRadius:8, padding:"10px 14px", color:C.success, fontSize:13 }}>{msg}</div>}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                <div>
+                  <Label required>Fecha inicio</Label>
+                  <input type="date" value={fechaInicio} onChange={e => setFInicio(e.target.value)}
+                    style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none" }} />
+                </div>
+                <div>
+                  <Label>Fecha término</Label>
+                  <input type="date" value={fechaTermino} onChange={e => setFTermino(e.target.value)}
+                    style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none" }} />
+                </div>
+              </div>
+              <div>
+                <Label>Horas reales trabajadas</Label>
+                <input type="number" step="0.5" min="0" placeholder="Ej. 8.5" value={horas} onChange={e => setHoras(e.target.value)}
+                  style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none" }} />
+              </div>
+              <div>
+                <Label>Material utilizado</Label>
+                <select value={materialId} onChange={e => setMatId(e.target.value)}
+                  style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none", cursor:"pointer" }}>
+                  <option value="">— Seleccionar —</option>
+                  {materiales.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              {materialId === "otro" && (
+                <div>
+                  <Label>Otro material</Label>
+                  <input placeholder="Especifica el material" value={materialOtro} onChange={e => setMatOtro(e.target.value)}
+                    style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none" }} />
+                </div>
+              )}
+              <div>
+                <Label>Comentarios</Label>
+                <textarea rows={3} placeholder="Observaciones, detalles del trabajo…" value={comentarios} onChange={e => setComent(e.target.value)}
+                  style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none", resize:"vertical" }} />
+              </div>
+              <button onClick={guardar} disabled={guardando} style={{ background:guardando?C.border:C.accent, color:guardando?C.muted:"#fff", border:"none", borderRadius:10, padding:"11px 0", cursor:guardando?"default":"pointer", fontWeight:700, fontSize:14 }}>
+                {guardando ? "Guardando…" : "Guardar avance"}
+              </button>
+            </div>
+          )}
+
+          {tab === "historial" && (
+            <div style={{ display:"grid", gap:8 }}>
+              {historial.length === 0 && <div style={{ color:C.muted, textAlign:"center", padding:30 }}>Sin eventos registrados.</div>}
+              {historial.map(ev => {
+                const fecha = ev.fecha_evento ? parseFechaUTC(ev.fecha_evento) : null;
+                const labels = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", autorizacion:"Autorización", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega" };
+                const colors = { recepcion:C.accent, asignacion:C.purple, inicio:C.warn, comentario:C.muted, autorizacion:C.success, cambio_estado:"#F97316", material:"#06B6D4", terminado:C.success, entrega:C.danger };
+                const icon = { recepcion:"📥", asignacion:"👤", inicio:"▶️", comentario:"💬", autorizacion:"✅", cambio_estado:"🔄", material:"🔧", terminado:"🏁", entrega:"📦" };
+                return (
+                  <div key={ev.id} style={{ display:"flex", gap:12, padding:"10px 14px", background:C.bg, borderRadius:8, border:`1px solid ${C.border}` }}>
+                    <div style={{ fontSize:18, width:28, textAlign:"center" }}>{icon[ev.evento_tipo] ?? "📌"}</div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                        <span style={{ color:colors[ev.evento_tipo] ?? C.muted, fontWeight:600, fontSize:12 }}>{labels[ev.evento_tipo] ?? ev.evento_tipo}</span>
+                        <span style={{ color:C.muted, fontSize:11 }}>{fecha ? fecha.toLocaleDateString("es-MX",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : ""}</span>
+                      </div>
+                      {ev.detalle && <div style={{ color:C.textSub, fontSize:12, marginTop:3 }}>{ev.detalle}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value, color }) {
+  return (
+    <div>
+      <div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>{label}</div>
+      <div style={{ color:color || C.text, fontSize:13, fontWeight:600 }}>{value}</div>
+    </div>
+  );
+}
+
+// ── Portal principal del técnico ────────────────────────────
+export default function TecnicoPortal({ usuario, onSalir }) {
+  const [ordenes, setOrdenes] = useState([]);
+  const [loading, setLoad] = useState(true);
+  const [filtro, setFiltro] = useState("todas");
+  const [ordenSel, setOS] = useState(null);
+  const [segRow, setSegRow] = useState(null);
+  const [materiales, setMateriales] = useState([]);
+  const [perfil, setPerfil] = useState(null);
+  const [pantalla, setPantalla] = useState("ordenes");
+
+  useEffect(() => { cargar(); }, []);
+
+  const cargar = async () => {
+    setLoad(true);
+    const [ordRes, matRes, perfRes] = await Promise.all([
+      obtenerOrdenesTecnico(usuario.id),
+      obtenerMateriales(),
+      obtenerPerfilTecnico(usuario.id),
+    ]);
+    setOrdenes(ordRes.data ?? []);
+    setMateriales(matRes ?? []);
+    setPerfil(perfRes.data);
+    setLoad(false);
+  };
+
+  const filtradas = ordenes.filter(s => {
+    if (filtro === "todas") return true;
+    const e = s.ordenes_trabajo?.estado;
+    if (filtro === "entregadas") return e === "terminada" && s.ordenes_trabajo?.entregada;
+    return e === filtro;
+  });
+
+  const totalHrs = ordenes.reduce((s, o) => s + (Number(o.tiempo_real_hrs) || 0), 0);
+  const terminadas = ordenes.filter(o => o.ordenes_trabajo?.estado === "terminada").length;
+  const enProceso = ordenes.filter(o => o.ordenes_trabajo?.estado === "en_proceso").length;
+  const turno = perfil?.turno ?? "primero";
+  const sem = getSemanaActual();
+  const mes = getMesActual();
+  const hrsSem = ordenes.filter(s => {
+    const f = s.fecha_inicio ? new Date(s.fecha_inicio) : null;
+    return f && f >= sem.inicio && f <= sem.fin;
+  }).reduce((s, o) => s + (Number(o.tiempo_real_hrs) || 0), 0);
+  const hrsMes = ordenes.filter(s => {
+    const f = s.fecha_inicio ? new Date(s.fecha_inicio) : null;
+    return f && f >= mes.inicio && f <= mes.fin;
+  }).reduce((s, o) => s + (Number(o.tiempo_real_hrs) || 0), 0);
+  const aprovSem = HRS_SEMANA[turno] > 0 ? Math.round((hrsSem / HRS_SEMANA[turno]) * 100) : 0;
+  const aprovMes = HRS_MES[turno] > 0 ? Math.round((hrsMes / HRS_MES[turno]) * 100) : 0;
+
+  const kpiData = [
+    { name: "Trabajadas", value: hrsSem, fill: C.accent },
+    { name: "Disponibles", value: HRS_SEMANA[turno] - hrsSem, fill: C.border },
+  ];
+
+  const abrirOrden = (o, s) => {
+    setOS(o);
+    setSegRow(s);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:C.bg, color:C.text }}>
+      {/* Header */}
+      <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"14px 24px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ width:4, height:24, background:C.accent, borderRadius:2 }} />
+          <span style={{ fontSize:18, fontWeight:800 }}>BWI — TOOLROOM</span>
+          <span style={{ color:C.muted, fontSize:12, marginLeft:8 }}>Portal del Técnico</span>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontSize:13, fontWeight:600 }}>{usuario.nombre_completo}</div>
+            <div style={{ color:C.muted, fontSize:11 }}>#{usuario.no_empleado} · Turno {turno === "segundo" ? "2° (7.5 hrs)" : "1° (8 hrs)"}</div>
+          </div>
+          <button onClick={onSalir} style={{ background:C.border, color:C.muted, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>Salir</button>
+        </div>
+      </div>
+
+      {/* Nav tabs */}
+      <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"0 24px", display:"flex", gap:0 }}>
+        {[["ordenes","Mis Órdenes"],["rendimiento","Mi Rendimiento"]].map(([k,l]) => (
+          <button key={k} onClick={() => setPantalla(k)} style={{ background:"none", border:"none", borderBottom:`2px solid ${pantalla===k?C.accent:"transparent"}`, color:pantalla===k?C.accent:C.muted, padding:"12px 18px", cursor:"pointer", fontWeight:600, fontSize:13 }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ padding:"20px 24px" }}>
+        {pantalla === "ordenes" && (
+          <>
+            {/* KPIs */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:10, marginBottom:18 }}>
+              {[
+                { label:"Total órdenes", value:ordenes.length, color:C.text },
+                { label:"En proceso", value:enProceso, color:C.warn },
+                { label:"Terminadas", value:terminadas, color:C.success },
+                { label:"Horas registradas", value:`${totalHrs.toFixed(1)}`, sub:"hrs", color:C.accent },
+                { label:"Aprovechamiento mes", value:`${aprovMes}%`, color:aprovMes >= 80 ? C.success : aprovMes >= 50 ? C.warn : C.danger },
+              ].map(k => (
+                <div key={k.label} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"16px 20px" }}>
+                  <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>{k.label}</div>
+                  <div style={{ color:k.color, fontSize:26, fontWeight:800 }}>{k.value}{k.sub && <span style={{ fontSize:12, fontWeight:400, color:C.muted }}> {k.sub}</span>}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Filtros */}
+            <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
+              {["todas","nueva_orden","en_proceso","terminada","entregadas"].map(f => (
+                <button key={f} onClick={() => setFiltro(f)} style={{
+                  background:filtro===f?(f==="entregadas"?C.purple:(EST_COLOR[f]||C.accent))+"22":"transparent",
+                  color:filtro===f?(f==="entregadas"?C.purple:(EST_COLOR[f]||C.accent)):C.muted,
+                  border:`1px solid ${filtro===f?(f==="entregadas"?C.purple:(EST_COLOR[f]||C.accent)):C.border}`,
+                  borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600,
+                }}>
+                  {{todas:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregadas:"Entregadas"}[f]}
+                </button>
+              ))}
+            </div>
+
+            {/* Tabla */}
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, overflow:"hidden" }}>
+              {loading ? <div style={{ padding:40, textAlign:"center", color:C.muted }}>Cargando…</div> : (
+                <div style={{ overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                    <thead>
+                      <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                        {["Folio","Fecha","Pieza","Solicitante","Prioridad","Estado","Inicio","Término","Hrs","Acción"].map(h => (
+                          <th key={h} style={{ padding:"10px 16px", color:C.muted, fontWeight:600, textAlign:"left", whiteSpace:"nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtradas.map((s, i) => {
+                        const o = s.ordenes_trabajo;
+                        if (!o) return null;
+                        const prio = PRIO[o.prioridad] ?? {};
+                        const oDate = o.fecha_solicitud ? parseFechaUTC(o.fecha_solicitud) : null;
+                        return (
+                          <tr key={s.id} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66" }}>
+                            <td style={{ padding:"10px 16px", color:C.accent, fontWeight:700 }}>#{o.no_orden}</td>
+                            <td style={{ padding:"10px 16px", color:C.textSub }}>{oDate ? oDate.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"2-digit"}) : "—"}</td>
+                            <td style={{ padding:"10px 16px", fontWeight:500, maxWidth:150, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{o.nombre_pieza}</td>
+                            <td style={{ padding:"10px 16px", color:C.textSub }}>{o.solicitante_nombre ?? "—"}</td>
+                            <td style={{ padding:"10px 16px" }}><Badge color={prio.color} label={prio.label} /></td>
+                            <td style={{ padding:"10px 16px" }}><Badge color={EST_COLOR[o.estado]} label={EST_LABEL[o.estado]} /></td>
+                            <td style={{ padding:"10px 16px", color:C.textSub, fontSize:12 }}>{s.fecha_inicio ?? "—"}</td>
+                            <td style={{ padding:"10px 16px", color:C.textSub, fontSize:12 }}>{s.fecha_termino ?? "—"}</td>
+                            <td style={{ padding:"10px 16px", color:C.textSub }}>{s.tiempo_real_hrs ?? "—"}</td>
+                            <td style={{ padding:"10px 16px" }}>
+                              <button onClick={() => abrirOrden(o, s)} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:8, padding:"5px 12px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
+                                Ver detalle
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {filtradas.length === 0 && (
+                        <tr><td colSpan={10} style={{ padding:40, textAlign:"center", color:C.muted }}>Sin órdenes con ese filtro.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {pantalla === "rendimiento" && (
+          <div style={{ display:"grid", gap:16 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10 }}>
+              {[
+                { label:"Hrs semana", value:`${hrsSem.toFixed(1)}`, sub:`/ ${HRS_SEMANA[turno]}`, color:C.accent },
+                { label:"Hrs mes", value:`${hrsMes.toFixed(1)}`, sub:`/ ${HRS_MES[turno]}`, color:C.accent },
+                { label:"Aprovechamiento semana", value:`${aprovSem}%`, color:aprovSem >= 80 ? C.success : aprovSem >= 50 ? C.warn : C.danger },
+                { label:"Aprovechamiento mes", value:`${aprovMes}%`, color:aprovMes >= 80 ? C.success : aprovMes >= 50 ? C.warn : C.danger },
+              ].map(k => (
+                <div key={k.label} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"18px 22px", textAlign:"center" }}>
+                  <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>{k.label}</div>
+                  <div style={{ color:k.color, fontSize:28, fontWeight:800 }}>{k.value}{k.sub && <span style={{ fontSize:12, fontWeight:400, color:C.muted }}> {k.sub}</span>}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Gráfica de barras */}
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"20px 22px" }}>
+              <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>Rendimiento</div>
+              <div style={{ color:C.text, fontSize:15, fontWeight:600, marginBottom:16 }}>Horas trabajadas vs disponibles</div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={[
+                  { name:"Semana", Trabajadas: hrsSem, Disponibles: HRS_SEMANA[turno] - hrsSem },
+                  { name:"Mes", Trabajadas: hrsMes, Disponibles: HRS_MES[turno] - hrsMes },
+                ]} barSize={36}>
+                  <XAxis dataKey="name" tick={{ fill:C.muted, fontSize:12 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill:C.muted, fontSize:11 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, fontSize:13 }} />
+                  <Legend wrapperStyle={{ color:C.muted, fontSize:12 }} />
+                  <Bar dataKey="Disponibles" fill={C.border} radius={[4,4,0,0]} />
+                  <Bar dataKey="Trabajadas" fill={C.accent} radius={[4,4,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Barras de eficiencia */}
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"20px 22px" }}>
+              <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>Eficiencia</div>
+              <div style={{ color:C.text, fontSize:15, fontWeight:600, marginBottom:20 }}>Aprovechamiento por período</div>
+              {[{ label:"Semana", pct:aprovSem, hrs:hrsSem, disp:HRS_SEMANA[turno] },
+                { label:"Mes", pct:aprovMes, hrs:hrsMes, disp:HRS_MES[turno] },
+              ].map(x => (
+                <div key={x.label} style={{ marginBottom:14 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                    <span style={{ color:C.textSub, fontSize:12 }}>{x.label} — {x.hrs.toFixed(1)} hrs / {x.disp} hrs</span>
+                    <span style={{ color:x.pct >= 80 ? C.success : x.pct >= 50 ? C.warn : C.danger, fontWeight:700, fontSize:13 }}>{x.pct}%</span>
+                  </div>
+                  <div style={{ height:10, background:C.border, borderRadius:5, overflow:"hidden" }}>
+                    <div style={{ width:`${Math.min(x.pct, 100)}%`, height:"100%", background:x.pct >= 80 ? C.success : x.pct >= 50 ? C.warn : C.danger, borderRadius:5, transition:"width .4s" }} />
+                  </div>
+                </div>
+              ))}
+              <div style={{ display:"flex", gap:16, marginTop:12, fontSize:11, color:C.muted }}>
+                <span><span style={{ color:C.success }}>■</span> ≥80% Óptimo</span>
+                <span><span style={{ color:C.warn }}>■</span> 50-79% Aceptable</span>
+                <span><span style={{ color:C.danger }}>■</span> &lt;50% Bajo</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Modal detalle */}
+      {ordenSel && (
+        <DetalleOrden
+          orden={ordenSel}
+          segRow={segRow}
+          usuario={usuario}
+          materiales={materiales}
+          onCerrar={() => { setOS(null); setSegRow(null); }}
+          onGuardado={cargar}
+        />
+      )}
+    </div>
+  );
+}
