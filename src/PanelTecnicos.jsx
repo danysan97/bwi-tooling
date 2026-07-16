@@ -254,7 +254,7 @@ export default function PanelTecnicos() {
       d.setMonth(d.getMonth() - i);
       const ini   = new Date(d.getFullYear(), d.getMonth(), 1);
       const fin2  = new Date(d.getFullYear(), d.getMonth()+1, 0, 23, 59, 59);
-      const label = fin2.toLocaleString("es-MX", { day:"numeric", month:"short", year:"numeric" });
+      const label = `${fin2.toLocaleString("es-MX", { month:"short" }).replace('.','')} '${String(fin2.getFullYear()).slice(2)}`;
       const row   = { mes: label };
       tecs.forEach(t => {
         const hrs = (segs ?? [])
@@ -408,7 +408,7 @@ export default function PanelTecnicos() {
           <div style={{ color:C.text, fontSize:15, fontWeight:600, marginBottom:16 }}>Horas trabajadas — Últimos 6 meses</div>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={historico}>
-              <XAxis dataKey="mes" tick={{ fill:C.muted, fontSize:12 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="mes" type="category" tick={{ fill:C.muted, fontSize:12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill:C.muted, fontSize:11 }} axisLine={false} tickLine={false} />
               <Tooltip content={<TooltipCustom />} />
               <Legend wrapperStyle={{ color:C.muted, fontSize:12 }} />
