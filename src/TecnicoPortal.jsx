@@ -390,7 +390,7 @@ export default function TecnicoPortal({ usuario, onSalir }) {
       <div style={{ ...glassSurface, borderBottom:`1px solid ${C.border}`, padding:"14px 24px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:100 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <img src="/logo-bwi.png" alt="BWI Group" style={{ height:32, objectFit:"contain" }} />
-          <span style={{ color:C.muted, fontSize:12 }}>Portal del Técnico</span>
+          <span style={{ color:C.muted, fontSize:12 }}>Portal del Técnico — TOOLROOM</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:16 }}>
           <div style={{ textAlign:"right" }}>

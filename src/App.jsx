@@ -67,7 +67,7 @@ function PantallaLogin({ onLogin }) {
         {/* Logo */}
         <div style={{ textAlign:"center", marginBottom:36 }}>
           <img src="/logo-bwi.png" alt="BWI Group" style={{ height:56, marginBottom:12, objectFit:"contain" }} />
-          <div style={{ color:C.muted, fontSize:13, letterSpacing:0.5 }}>Portal de Órdenes de Trabajo</div>
+          <div style={{ color:C.muted, fontSize:13, letterSpacing:0.5 }}>Portal de Órdenes de Trabajo<br/>TOOLROOM</div>
         </div>
 
         {/* Card */}

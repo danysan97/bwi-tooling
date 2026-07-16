@@ -574,7 +574,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
         <div style={{ maxWidth:1280, margin:"0 auto", display:"flex", alignItems:"center", justifyContent:"space-between", height:54 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <img src="/logo-bwi.png" alt="BWI Group" style={{ height:32, objectFit:"contain" }} />
-            <span style={{ color:C.muted, fontSize:12 }}>Panel de administración</span>
+            <span style={{ color:C.muted, fontSize:12 }}>Panel de administración — TOOLROOM</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ color:C.muted, fontSize:12 }}>{usuario?.nombre_completo}</span>
