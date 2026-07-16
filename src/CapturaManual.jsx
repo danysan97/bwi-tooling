@@ -156,15 +156,24 @@ function FormCaptura({ usuario, onExito }) {
     fecha_inicio:    "",
     fecha_termino:   "",
     // Asignación y cierre
-    tecnico_id:      "",
+    tecnicos:         [{ tecnico_id: "", tiempo_real_hrs: "" }],
     material_id:     "",
     material_otro:   "",
     entregada:       false,
     comentarios:     "",
-    tiempo_real_hrs: "",
   });
 
   const set = (k, v) => { setForm(f => ({...f, [k]:v})); setErr(e => ({...e, [k]:""})); };
+
+  const agregarTecnico = () => {
+    setForm(f => ({...f, tecnicos: [...f.tecnicos, { tecnico_id: "", tiempo_real_hrs: "" }]}));
+  };
+  const quitarTecnico = (idx) => {
+    setForm(f => ({...f, tecnicos: f.tecnicos.filter((_, i) => i !== idx)}));
+  };
+  const actualizarTec = (idx, campo, valor) => {
+    setForm(f => ({...f, tecnicos: f.tecnicos.map((t, i) => i === idx ? {...t, [campo]: valor} : t)}));
+  };
 
   useEffect(() => {
     Promise.all([listarUsuarios(), obtenerAreas(), obtenerTecnicos(), obtenerMateriales()])
@@ -189,7 +198,7 @@ function FormCaptura({ usuario, onExito }) {
     if (!form.fecha_original)       e.fecha_original = "Ingresa la fecha de la orden original.";
     if (form.fecha_termino && !form.fecha_inicio) e.fecha_inicio = "Si hay fecha de término, también debes indicar la fecha de inicio.";
     if (form.fecha_termino && form.fecha_inicio && form.fecha_termino < form.fecha_inicio) e.fecha_termino = "La fecha de término no puede ser anterior a la de inicio.";
-    if (!form.tecnico_id)           e.tecnico_id = "Selecciona un técnico asignado.";
+    if (!form.tecnicos.some(t => t.tecnico_id))  e.tecnico_id = "Asigna al menos un técnico.";
     if (form.entregada && !form.fecha_termino) e.entregada = "Para marcar como entregada, debes indicar fecha de término.";
     return e;
   };
@@ -239,17 +248,13 @@ function FormCaptura({ usuario, onExito }) {
     // Convertir fechas a formato ISO (mediodía UTC para que se muestre correctamente en la zona local)
     const aISO = (f) => f ? new Date(f + "T12:00:00Z").toISOString() : null;
 
-    // Calcular horas reales
     const tieneInicio  = !!form.fecha_inicio;
     const tieneTermino = !!form.fecha_termino;
-    let tiempoRealHrs = form.tiempo_real_hrs ? Number(form.tiempo_real_hrs) : null;
-    if (tieneInicio && tieneTermino && !tiempoRealHrs) {
-      tiempoRealHrs = Math.round(((new Date(form.fecha_termino) - new Date(form.fecha_inicio)) / (1000 * 60 * 60)) * 10) / 10;
-    }
 
-    // Nombre del técnico para el historial
-    const tecnico = tecnicos.find(t => t.id === form.tecnico_id);
-    const nombreTecnico = tecnico?.nombre_completo ?? "Técnico";
+    // Calcular horas default si no se ingresaron individualmente
+    const hrsCalc = tieneInicio && tieneTermino
+      ? Math.round(((new Date(form.fecha_termino) - new Date(form.fecha_inicio)) / (1000 * 60 * 60)) * 10) / 10
+      : null;
 
     // Material para el historial
     let nombreMaterial = null;
@@ -260,23 +265,30 @@ function FormCaptura({ usuario, onExito }) {
       nombreMaterial = mat?.nombre ?? null;
     }
 
-    // 1. Crear seguimiento_orden con técnico, fechas, material, horas
-    const { error: segErr } = await supabase.from("seguimiento_orden").insert({
-      orden_id:        noOrden,
-      tecnico_id:      form.tecnico_id,
-      fecha_inicio:    aISO(form.fecha_inicio),
-      fecha_termino:   aISO(form.fecha_termino),
-      tiempo_real_hrs: tiempoRealHrs,
-      material_id:     form.material_id !== "__otro__" ? form.material_id : null,
-      material_otro:   form.material_id === "__otro__" ? form.material_otro.trim() : null,
-      comentarios:     form.comentarios.trim() || null,
-      actualizado_por: usuario.id,
-    });
-    if (segErr) console.error("Error creando seguimiento:", segErr);
+    // 1. Crear seguimiento_orden por cada técnico
+    const tecnicosValidos = form.tecnicos.filter(t => t.tecnico_id);
+    for (const tec of tecnicosValidos) {
+      const horas = tec.tiempo_real_hrs ? Number(tec.tiempo_real_hrs) : hrsCalc;
+      const { error: segErr } = await supabase.from("seguimiento_orden").insert({
+        orden_id:        noOrden,
+        tecnico_id:      tec.tecnico_id,
+        fecha_inicio:    aISO(form.fecha_inicio),
+        fecha_termino:   aISO(form.fecha_termino),
+        tiempo_real_hrs: horas,
+        material_id:     form.material_id !== "__otro__" ? form.material_id : null,
+        material_otro:   form.material_id === "__otro__" ? form.material_otro.trim() : null,
+        comentarios:     form.comentarios.trim() || null,
+        actualizado_por: usuario.id,
+      });
+      if (segErr) console.error("Error creando seguimiento:", segErr);
+    }
 
     // 2. Registrar eventos en historial (orden cronológica)
     // recepcion ya la registra crearOrden
-    await registrarEvento(noOrden, "asignacion", `Técnico asignado: ${nombreTecnico}.`, usuario.id);
+    for (const tec of tecnicosValidos) {
+      const nombreTec = tecnicos.find(t => t.id === tec.tecnico_id)?.nombre_completo ?? "Técnico";
+      await registrarEvento(noOrden, "asignacion", `Técnico asignado: ${nombreTec}.`, usuario.id);
+    }
     if (tieneInicio) {
       await registrarEvento(noOrden, "inicio", "Trabajo iniciado.", usuario.id);
     }
@@ -539,30 +551,51 @@ function FormCaptura({ usuario, onExito }) {
 
       {/* ── Asignación y cierre */}
       <Section title="Asignación y cierre" subtitle="Completa los datos de ejecución para cerrar la orden de un solo paso.">
-        <Row>
-          <div>
-            <Label required>Técnico asignado</Label>
-            <Select value={form.tecnico_id} error={!!errores.tecnico_id}
-              onChange={e => set("tecnico_id", e.target.value)}>
-              <option value="">— Seleccionar técnico —</option>
-              {tecnicos.map(t => (
-                <option key={t.id} value={t.id}>{t.nombre_completo} ({t.no_empleado})</option>
-              ))}
-            </Select>
-            <ErrMsg msg={errores.tecnico_id} />
+        {/* Lista de técnicos */}
+        <div style={{ marginBottom:14 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+            <Label required>Técnicos asignados</Label>
+            <button type="button" onClick={agregarTecnico}
+              style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`,
+                borderRadius:9999, padding:"4px 12px", cursor:"pointer", fontSize:11, fontWeight:600 }}>
+              + Agregar técnico
+            </button>
           </div>
-          <div>
-            <Label>Horas reales</Label>
-            <Input type="number" step="0.5" min="0" placeholder="Auto-calculado"
-              value={form.tiempo_real_hrs}
-              onChange={e => set("tiempo_real_hrs", e.target.value)} />
-            <div style={{ color:C.muted, fontSize:11, marginTop:4 }}>
-              {form.fecha_inicio && form.fecha_termino
-                ? `Calculado: ${Math.round(((new Date(form.fecha_termino) - new Date(form.fecha_inicio)) / (1000*60*60)) * 10) / 10} hrs (editable)`
-                : "Se calcula automáticamente si ambas fechas están definidas."}
+          {errores.tecnico_id && <ErrMsg msg={errores.tecnico_id} />}
+
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {form.tecnicos.map((tec, idx) => (
+              <div key={idx} style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <div style={{ flex:1 }}>
+                  <Select value={tec.tecnico_id} error={!!errores.tecnico_id && !form.tecnicos.some(t => t.tecnico_id)}
+                    onChange={e => actualizarTec(idx, "tecnico_id", e.target.value)}>
+                    <option value="">— Seleccionar técnico —</option>
+                    {tecnicos.map(t => (
+                      <option key={t.id} value={t.id}>{t.nombre_completo} ({t.no_empleado})</option>
+                    ))}
+                  </Select>
+                </div>
+                <div style={{ width:120, flexShrink:0 }}>
+                  <Input type="number" step="0.5" min="0" placeholder="Horas"
+                    value={tec.tiempo_real_hrs}
+                    onChange={e => actualizarTec(idx, "tiempo_real_hrs", e.target.value)} />
+                </div>
+                {form.tecnicos.length > 1 && (
+                  <button type="button" onClick={() => quitarTecnico(idx)}
+                    style={{ background:"none", color:C.danger, border:`1px solid ${C.danger}55`,
+                      borderRadius:8, padding:"6px 10px", cursor:"pointer", fontSize:12, flexShrink:0 }}>
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {form.fecha_inicio && form.fecha_termino && (
+            <div style={{ color:C.muted, fontSize:11, marginTop:6 }}>
+              Horas calculadas por técnico: {Math.round(((new Date(form.fecha_termino) - new Date(form.fecha_inicio)) / (1000*60*60)) * 10) / 10} hrs (editable en cada uno)
             </div>
-          </div>
-        </Row>
+          )}
+        </div>
 
         <Row>
           <div>
