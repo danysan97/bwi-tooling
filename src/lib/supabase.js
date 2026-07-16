@@ -331,9 +331,11 @@ export async function guardarSeguimiento(no_orden, tecnicos, comentarios, materi
     }
   }
 
-  const prevMat = existentes?.some(e => normMat(e.material_id)) ? existentes.find(e => normMat(e.material_id)).material_id : null
-  const prevO  = existentes?.find(e => e.material_otro)?.material_otro || ''
-  const matCambio = curMat !== normMat(prevMat) || curOtro !== prevO
+  const prevMatValues = (existentes ?? []).map(e => normMat(e.material_id)).filter(Boolean)
+  const prevOtroValues = (existentes ?? []).map(e => e.material_otro || '').filter(Boolean)
+  const matYaRegistrado = (curMat && prevMatValues.includes(curMat)) || (curOtro && prevOtroValues.includes(curOtro))
+  const sinMaterial = !curMat && !curOtro && prevMatValues.length === 0 && prevOtroValues.length === 0
+  const matCambio = !matYaRegistrado && !sinMaterial
 
   const prevComent = existentes?.[0]?.comentarios ?? null
 
