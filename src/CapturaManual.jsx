@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   obtenerSesion, cerrarSesion,
-  crearOrden, obtenerAreas, obtenerTecnicos,
+  crearOrden, obtenerAreas, obtenerTecnicos, obtenerMateriales,
   listarUsuarios, actualizarEstado, registrarEvento, supabase,
 } from "./lib/supabase";
 
@@ -128,6 +128,8 @@ function FormCaptura({ usuario, onExito }) {
   const fileRef   = useRef();
   const [usuarios, setUsuarios]           = useState([]);
   const [areas, setAreas]                 = useState([]);
+  const [tecnicos, setTecnicos]           = useState([]);
+  const [materiales, setMateriales]       = useState([]);
   const [solicitante, setSolicitante]     = useState(null); // usuario seleccionado del sistema
   const [archivo, setArchivo]             = useState(null);
   const [enviando, setEnv]                = useState(false);
@@ -153,15 +155,24 @@ function FormCaptura({ usuario, onExito }) {
     fecha_original:  new Date().toISOString().slice(0,10),
     fecha_inicio:    "",
     fecha_termino:   "",
+    // Asignación y cierre
+    tecnico_id:      "",
+    material_id:     "",
+    material_otro:   "",
+    entregada:       false,
+    comentarios:     "",
+    tiempo_real_hrs: "",
   });
 
   const set = (k, v) => { setForm(f => ({...f, [k]:v})); setErr(e => ({...e, [k]:""})); };
 
   useEffect(() => {
-    Promise.all([listarUsuarios(), obtenerAreas()])
-      .then(([{ data }, areasData]) => {
+    Promise.all([listarUsuarios(), obtenerAreas(), obtenerTecnicos(), obtenerMateriales()])
+      .then(([{ data }, areasData, tecnicosData, materialesData]) => {
         setUsuarios(data ?? []);
         setAreas(areasData);
+        setTecnicos(tecnicosData);
+        setMateriales(materialesData);
       });
   }, []);
 
@@ -178,6 +189,8 @@ function FormCaptura({ usuario, onExito }) {
     if (!form.fecha_original)       e.fecha_original = "Ingresa la fecha de la orden original.";
     if (form.fecha_termino && !form.fecha_inicio) e.fecha_inicio = "Si hay fecha de término, también debes indicar la fecha de inicio.";
     if (form.fecha_termino && form.fecha_inicio && form.fecha_termino < form.fecha_inicio) e.fecha_termino = "La fecha de término no puede ser anterior a la de inicio.";
+    if (!form.tecnico_id)           e.tecnico_id = "Selecciona un técnico asignado.";
+    if (form.entregada && !form.fecha_termino) e.entregada = "Para marcar como entregada, debes indicar fecha de término.";
     return e;
   };
 
@@ -187,11 +200,8 @@ function FormCaptura({ usuario, onExito }) {
 
     setEnv(true);
 
-    // Si el solicitante no está en el sistema, usamos la cuenta del admin
-    // pero marcamos los datos manuales en la descripción
     const solicitanteId = solicitante?.id ?? usuario.id;
 
-    // Si el usuario seleccionó alguien del sistema pero editó nombre/empleado, reflejarlo
     const nombreEditado   = solicitante && form.nombre_manual && form.nombre_manual !== solicitante.nombre_completo;
     const empleadoEditado = solicitante && form.empleado_manual && form.empleado_manual !== solicitante.no_empleado;
 
@@ -226,46 +236,72 @@ function FormCaptura({ usuario, onExito }) {
 
     const noOrden = data.no_orden;
 
-    // Determinar estado según las fechas
+    // Convertir fechas a formato ISO (mediodía UTC para que se muestre correctamente en la zona local)
+    const aISO = (f) => f ? new Date(f + "T12:00:00Z").toISOString() : null;
+
+    // Calcular horas reales
     const tieneInicio  = !!form.fecha_inicio;
     const tieneTermino = !!form.fecha_termino;
+    let tiempoRealHrs = form.tiempo_real_hrs ? Number(form.tiempo_real_hrs) : null;
+    if (tieneInicio && tieneTermino && !tiempoRealHrs) {
+      tiempoRealHrs = Math.round(((new Date(form.fecha_termino) - new Date(form.fecha_inicio)) / (1000 * 60 * 60)) * 10) / 10;
+    }
+
+    // Nombre del técnico para el historial
+    const tecnico = tecnicos.find(t => t.id === form.tecnico_id);
+    const nombreTecnico = tecnico?.nombre_completo ?? "Técnico";
+
+    // Material para el historial
+    let nombreMaterial = null;
+    if (form.material_id === "__otro__" && form.material_otro.trim()) {
+      nombreMaterial = form.material_otro.trim();
+    } else if (form.material_id && form.material_id !== "__otro__") {
+      const mat = materiales.find(m => m.id === form.material_id);
+      nombreMaterial = mat?.nombre ?? null;
+    }
+
+    // 1. Crear seguimiento_orden con técnico, fechas, material, horas
+    const { error: segErr } = await supabase.from("seguimiento_orden").insert({
+      orden_id:        noOrden,
+      tecnico_id:      form.tecnico_id,
+      fecha_inicio:    aISO(form.fecha_inicio),
+      fecha_termino:   aISO(form.fecha_termino),
+      tiempo_real_hrs: tiempoRealHrs,
+      material_id:     form.material_id !== "__otro__" ? form.material_id : null,
+      material_otro:   form.material_id === "__otro__" ? form.material_otro.trim() : null,
+      comentarios:     form.comentarios.trim() || null,
+      actualizado_por: usuario.id,
+    });
+    if (segErr) console.error("Error creando seguimiento:", segErr);
+
+    // 2. Registrar eventos en historial (orden cronológica)
+    // recepcion ya la registra crearOrden
+    await registrarEvento(noOrden, "asignacion", `Técnico asignado: ${nombreTecnico}.`, usuario.id);
+    if (tieneInicio) {
+      await registrarEvento(noOrden, "inicio", "Trabajo iniciado.", usuario.id);
+    }
+    if (nombreMaterial) {
+      await registrarEvento(noOrden, "material", `Material registrado: ${nombreMaterial}.`, usuario.id);
+    }
+    if (tieneTermino) {
+      await registrarEvento(noOrden, "terminado", "Trabajo finalizado.", usuario.id);
+    }
+    if (form.entregada && tieneTermino) {
+      await registrarEvento(noOrden, "entrega", "Trabajo entregado al solicitante.", usuario.id);
+    }
+
+    // 3. Determinar y actualizar estado final
     let estadoFinal = "nueva_orden";
     if (tieneInicio && tieneTermino)  estadoFinal = "terminada";
     else if (tieneInicio)             estadoFinal = "en_proceso";
 
-    // Convertir fechas a formato ISO (mediodía UTC para que se muestre correctamente en la zona local)
-    const aISO = (f) => f ? new Date(f + "T12:00:00Z").toISOString() : null;
-
-    // Actualizar estado si no es nueva_orden
     if (estadoFinal !== "nueva_orden") {
       await actualizarEstado(noOrden, estadoFinal, usuario.id);
     }
 
-    // Crear registro de seguimiento con las fechas
-    let tiempoRealHrs = null;
-    if (tieneInicio && tieneTermino) {
-      const dInicio  = new Date(form.fecha_inicio);
-      const dTermino = new Date(form.fecha_termino);
-      tiempoRealHrs = Math.round(((dTermino - dInicio) / (1000 * 60 * 60)) * 10) / 10;
-    }
-
-    const { error: segErr } = await supabase.from("seguimiento_orden").insert({
-      orden_id:        noOrden,
-      fecha_inicio:    aISO(form.fecha_inicio),
-      fecha_termino:   aISO(form.fecha_termino),
-      tiempo_real_hrs: tiempoRealHrs,
-      tecnico_id:      null,
-      actualizado_por: usuario.id,
-    });
-
-    if (segErr) console.error("Error creando seguimiento:", segErr);
-
-    // Registrar eventos en el historial
-    if (tieneInicio) {
-      await registrarEvento(noOrden, "inicio", "Orden capturada con fecha de inicio.", usuario.id);
-    }
-    if (tieneTermino) {
-      await registrarEvento(noOrden, "terminado", "Orden capturada con fecha de término.", usuario.id);
+    // 4. Si entregada, marcar boolean en BD
+    if (form.entregada && tieneTermino) {
+      await supabase.from("ordenes_trabajo").update({ entregada: true }).eq("no_orden", noOrden);
     }
 
     setEnv(false);
@@ -337,7 +373,9 @@ function FormCaptura({ usuario, onExito }) {
           <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"8px 14px",
             background: C.bg, borderRadius:8, border:`1px solid ${C.border}` }}>
             <span style={{ color:C.muted, fontSize:12 }}>Estado resultante:</span>
-            {form.fecha_termino && form.fecha_inicio ? (
+            {form.entregada && form.fecha_termino && form.fecha_inicio ? (
+              <span style={{ background:"#8B5CF622", color:"#8B5CF6", fontWeight:700, fontSize:12, padding:"3px 10px", borderRadius:6 }}>Entregada</span>
+            ) : form.fecha_termino && form.fecha_inicio ? (
               <span style={{ background:C.success+"22", color:C.success, fontWeight:700, fontSize:12, padding:"3px 10px", borderRadius:6 }}>Terminada</span>
             ) : form.fecha_inicio ? (
               <span style={{ background:C.warn+"22", color:C.warn, fontWeight:700, fontSize:12, padding:"3px 10px", borderRadius:6 }}>En proceso</span>
@@ -499,13 +537,106 @@ function FormCaptura({ usuario, onExito }) {
         <ErrMsg msg={errores.prioridad} />
       </Section>
 
+      {/* ── Asignación y cierre */}
+      <Section title="Asignación y cierre" subtitle="Completa los datos de ejecución para cerrar la orden de un solo paso.">
+        <Row>
+          <div>
+            <Label required>Técnico asignado</Label>
+            <Select value={form.tecnico_id} error={!!errores.tecnico_id}
+              onChange={e => set("tecnico_id", e.target.value)}>
+              <option value="">— Seleccionar técnico —</option>
+              {tecnicos.map(t => (
+                <option key={t.id} value={t.id}>{t.nombre_completo} ({t.no_empleado})</option>
+              ))}
+            </Select>
+            <ErrMsg msg={errores.tecnico_id} />
+          </div>
+          <div>
+            <Label>Horas reales</Label>
+            <Input type="number" step="0.5" min="0" placeholder="Auto-calculado"
+              value={form.tiempo_real_hrs}
+              onChange={e => set("tiempo_real_hrs", e.target.value)} />
+            <div style={{ color:C.muted, fontSize:11, marginTop:4 }}>
+              {form.fecha_inicio && form.fecha_termino
+                ? `Calculado: ${Math.round(((new Date(form.fecha_termino) - new Date(form.fecha_inicio)) / (1000*60*60)) * 10) / 10} hrs (editable)`
+                : "Se calcula automáticamente si ambas fechas están definidas."}
+            </div>
+          </div>
+        </Row>
+
+        <Row>
+          <div>
+            <Label>Material utilizado</Label>
+            <Select value={form.material_id}
+              onChange={e => { set("material_id", e.target.value); if (e.target.value) set("material_otro", ""); }}>
+              <option value="">— Seleccionar material —</option>
+              {materiales.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+              <option value="__otro__">Otro (especificar)</option>
+            </Select>
+          </div>
+          <div>
+            {form.material_id === "__otro__" ? (
+              <>
+                <Label>Especificar material</Label>
+                <Input placeholder="Ej. Acero inoxidable 304" value={form.material_otro}
+                  onChange={e => set("material_otro", e.target.value)} />
+              </>
+            ) : (
+              <>
+                <Label>Comentarios</Label>
+                <Input placeholder="Nota opcional sobre el trabajo…" value={form.comentarios}
+                  onChange={e => set("comentarios", e.target.value)} />
+              </>
+            )}
+          </div>
+        </Row>
+
+        {form.material_id === "__otro__" && (
+          <div style={{ marginBottom:14 }}>
+            <Label>Comentarios</Label>
+            <Input placeholder="Nota opcional sobre el trabajo…" value={form.comentarios}
+              onChange={e => set("comentarios", e.target.value)} />
+          </div>
+        )}
+
+        {/* Entregada toggle */}
+        <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:14, marginTop:6 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+            padding:"12px 16px", borderRadius:10,
+            background: form.entregada ? "#8B5CF618" : C.bg,
+            border:`1px solid ${form.entregada ? "#8B5CF655" : C.border}`,
+            opacity: form.fecha_termino ? 1 : 0.5 }}>
+            <div>
+              <div style={{ color:C.text, fontWeight:600, fontSize:14 }}>📦 ¿Trabajo entregado al solicitante?</div>
+              <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>
+                {form.fecha_termino
+                  ? "Marca esta opción si el solicitante ya recogió la pieza."
+                  : "Necesitas fecha de término para poder marcar como entregada."}
+              </div>
+            </div>
+            <div onClick={() => {
+                if (!form.fecha_termino) return;
+                set("entregada", !form.entregada);
+              }}
+              style={{ width:48, height:26, borderRadius:13, cursor: form.fecha_termino ? "pointer" : "not-allowed",
+                background: form.entregada ? "#8B5CF6" : C.border,
+                position:"relative", transition:"background .2s", flexShrink:0 }}>
+              <div style={{ width:20, height:20, borderRadius:"50%", background:"#fff",
+                position:"absolute", top:3, left: form.entregada ? 25 : 3,
+                transition:"left .2s", boxShadow:"0 1px 3px #0004" }} />
+            </div>
+          </div>
+          <ErrMsg msg={errores.entregada} />
+        </div>
+      </Section>
+
       {/* Botón */}
       <button onClick={enviar} disabled={enviando} style={{
         width:"100%", background:enviando ? C.border : C.success,
         color:enviando ? C.muted : "#fff", border:"none", borderRadius:12,
         padding:"14px 0", fontWeight:700, fontSize:16, cursor:enviando ? "default" : "pointer",
         transition:"background .15s" }}>
-        {enviando ? "Guardando en el sistema…" : "✓ Registrar orden manual"}
+        {enviando ? "Guardando en el sistema…" : "✓ Registrar y cerrar orden"}
       </button>
     </div>
   );
