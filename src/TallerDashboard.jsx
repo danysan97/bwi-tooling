@@ -495,8 +495,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
 }
 
 // ── APP PRINCIPAL ─────────────────────────────────────────────
-const TABS_ADMIN = ["Órdenes","Gráficas","Técnicos","Usuarios"];
-const TABS_BASE  = ["Órdenes","Gráficas","Técnicos"];
+const TABS_ADMIN = ["Órdenes","Prioridades","Gráficas","Técnicos","Usuarios"];
+const TABS_BASE  = ["Órdenes","Prioridades","Gráficas","Técnicos"];
 
 export default function App({ usuario: usuarioProp, onCapturarManual, onSalir }) {
   const usuario = usuarioProp || obtenerSesion();
@@ -509,6 +509,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
   const [materiales, setMat]  = useState([]);
   const [loading, setLoad]    = useState(true);
   const [filtroEst, setFE]    = useState("todos");
+  const [filtroPrio, setFP]  = useState("todas");
   const [busqueda, setBusq]   = useState("");
   const [ordenSel, setOS]     = useState(null);
   const [solicitando, setSol] = useState(false);
@@ -663,6 +664,106 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
               </div>
             )}
           </Card>
+        )}
+
+        {/* ── PRIORIDADES */}
+        {tab === "Prioridades" && (
+          <div style={{ display:"grid", gap:14 }}>
+            {/* Sub-tabs prioridad */}
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+              {[
+                { key:"todas", label:"Todas", color:C.text },
+                { key:"1_seguridad", label:"1·Seguridad", color:PRIO_COLOR["1_seguridad"] },
+                { key:"2_queja_cliente", label:"2·Queja cliente", color:PRIO_COLOR["2_queja_cliente"] },
+                { key:"3_maquina_parada", label:"3·Máq. parada", color:PRIO_COLOR["3_maquina_parada"] },
+                { key:"4_trabajo_rapido", label:"4·Rápido", color:PRIO_COLOR["4_trabajo_rapido"] },
+                { key:"5_fabricacion", label:"5·Fabricación", color:PRIO_COLOR["5_fabricacion"] },
+              ].map(p => {
+                const count = p.key === "todas" ? ordenes.length : ordenes.filter(o => o.prioridad === p.key).length;
+                const active = filtroPrio === p.key;
+                return (
+                  <button key={p.key} onClick={() => setFP(p.key)} style={{
+                    background: active ? p.color+"22" : "transparent",
+                    color: active ? p.color : C.muted,
+                    border: `1px solid ${active ? p.color : C.border}`,
+                    borderRadius: 8, padding: "7px 16px", cursor: "pointer",
+                    fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6
+                  }}>
+                    {p.label}
+                    <span style={{
+                      background: active ? p.color : C.border,
+                      color: active ? "#fff" : C.muted,
+                      borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 700
+                    }}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Resumen de la prioridad seleccionada */}
+            {filtroPrio !== "todas" && (() => {
+              const prioOrd = ordenes.filter(o => o.prioridad === filtroPrio);
+              const color = PRIO_COLOR[filtroPrio];
+              const nombre = PRIO_LABEL[filtroPrio];
+              return (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:10 }}>
+                  {[
+                    { label:"Total", val:prioOrd.length },
+                    { label:"Nuevas", val:prioOrd.filter(o => o.estado === "nueva_orden").length, color:C.accent },
+                    { label:"En proceso", val:prioOrd.filter(o => o.estado === "en_proceso").length, color:C.warn },
+                    { label:"Terminadas", val:prioOrd.filter(o => o.estado === "terminada").length, color:C.success },
+                    { label:"Entregadas", val:prioOrd.filter(o => o.estado === "terminada" && o.entregada).length, color:C.purple },
+                  ].map((s, i) => (
+                    <Card key={i}>
+                      <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{s.label}</div>
+                      <div style={{ color: s.color || color, fontSize:28, fontWeight:700, lineHeight:1 }}>{s.val}</div>
+                    </Card>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Tabla */}
+            <Card style={{ padding:0 }}>
+              {loading ? <Spinner /> : (
+                <div style={{ overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                    <thead>
+                      <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                        {["Folio","Fecha","Solicitante","Área","Pieza","S.E.T.C.","Prioridad","Estado","Técnico","Hrs"].map(h => (
+                          <th key={h} style={{ padding:"10px 14px", color:C.muted, fontWeight:600, textAlign:"left", whiteSpace:"nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ordenes
+                        .filter(o => filtroPrio === "todas" || o.prioridad === filtroPrio)
+                        .sort((a, b) => (a.prioridad || "").localeCompare(b.prioridad || "") || (b.no_orden - a.no_orden))
+                        .map((o, i) => (
+                          <tr key={o.no_orden} onClick={() => setOS(o)} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66", cursor:"pointer" }}
+                            onMouseEnter={e => e.currentTarget.style.background=C.accent+"11"}
+                            onMouseLeave={e => e.currentTarget.style.background=i%2===0?"transparent":C.bg+"66"}>
+                            <td style={{ padding:"10px 14px", color:C.accent, fontWeight:700 }}>#{o.no_orden}</td>
+                            <td style={{ padding:"10px 14px", color:C.textSub }}>{o.fecha_solicitud?.slice(0,10)}</td>
+                            <td style={{ padding:"10px 14px" }}>{o.solicitante_nombre}</td>
+                            <td style={{ padding:"10px 14px", color:C.textSub, maxWidth:150, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{o.area_nombre ?? o.departamento}</td>
+                            <td style={{ padding:"10px 14px", fontWeight:500 }}>{o.nombre_pieza}</td>
+                            <td style={{ padding:"10px 14px", color:sinSETC(o)?C.danger:C.textSub, fontWeight:sinSETC(o)?600:400, fontSize:12 }}>{sinSETC(o)?"⚠ SIN SETC":o.setc_numero || "—"}</td>
+                            <td style={{ padding:"10px 14px" }}><PrioBadge p={o.prioridad} /></td>
+                            <td style={{ padding:"10px 14px" }}><Badge estado={o.estado} entregada={o.entregada} /></td>
+                            <td style={{ padding:"10px 14px", color:C.textSub }}>{o.tecnico_nombre ?? "—"}</td>
+                            <td style={{ padding:"10px 14px", color:C.textSub }}>{o.tiempo_real_hrs ?? "—"}</td>
+                          </tr>
+                        ))}
+                      {(filtroPrio === "todas" ? ordenes : ordenes.filter(o => o.prioridad === filtroPrio)).length === 0 && (
+                        <tr><td colSpan={10} style={{ padding:40, textAlign:"center", color:C.muted }}>Sin órdenes para esta prioridad.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </div>
         )}
 
         {/* ── GRÁFICAS */}
