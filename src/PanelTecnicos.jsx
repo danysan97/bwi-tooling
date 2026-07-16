@@ -239,7 +239,9 @@ export default function PanelTecnicos() {
         ordenesSem:   enSemana.length,
         ordenesMes:   enMes.length,
         ordenesTotal: misSegs.length,
-        terminadas:   misSegs.filter(s => s.ordenes_trabajo?.estado === "terminada").length,
+        terminadasSem:   enSemana.filter(s => s.ordenes_trabajo?.estado === "terminada").length,
+        terminadasMes:   enMes.filter(s => s.ordenes_trabajo?.estado === "terminada").length,
+        terminadasTotal: misSegs.filter(s => s.ordenes_trabajo?.estado === "terminada").length,
       };
     });
 
@@ -307,6 +309,7 @@ export default function PanelTecnicos() {
                 const hrsTrab = periodo === "semana" ? m.hrsTrabSem : periodo === "mes" ? m.hrsTrabMes : m.hrsTotal;
                 const aprov   = periodo === "semana" ? m.aprovSem : periodo === "mes" ? m.aprovMes : null;
                 const ords    = periodo === "semana" ? m.ordenesSem : periodo === "mes" ? m.ordenesMes : m.ordenesTotal;
+                const terms   = periodo === "semana" ? m.terminadasSem : periodo === "mes" ? m.terminadasMes : m.terminadasTotal;
 
                 return (
                   <tr key={t.id} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66" }}>
@@ -327,7 +330,7 @@ export default function PanelTecnicos() {
                       ) : <span style={{ color:C.muted }}>—</span>}
                     </td>
                     <td style={{ padding:"12px 16px", textAlign:"center" }}>{ords ?? 0}</td>
-                    <td style={{ padding:"12px 16px", textAlign:"center", color:C.success, fontWeight:600 }}>{m.terminadas ?? 0}</td>
+                    <td style={{ padding:"12px 16px", textAlign:"center", color:C.success, fontWeight:600 }}>{terms ?? 0}</td>
                     <td style={{ padding:"12px 16px" }}>
                       <button onClick={() => setTecSelec(t)} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:8, padding:"5px 12px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
                         Ver historial
