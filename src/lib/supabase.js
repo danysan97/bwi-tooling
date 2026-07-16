@@ -286,6 +286,10 @@ export async function guardarSeguimiento(no_orden, tecnicos, comentarios, materi
 
   let error = null
 
+  const normMat = (v) => (!v || v === '0' || v === 0) ? '' : String(v)
+  const curMat  = normMat(material_id)
+  const curOtro = material_otro || ''
+
   for (const tech of tecnicos) {
     const payload = {
       orden_id:        no_orden,
@@ -327,12 +331,14 @@ export async function guardarSeguimiento(no_orden, tecnicos, comentarios, materi
     }
   }
 
-  const prevMaterial = existentes?.[0]?.material_id ?? null
-  const prevMatOtro  = existentes?.[0]?.material_otro ?? null
-  const prevComent   = existentes?.[0]?.comentarios ?? null
+  const prevMat = existentes?.some(e => normMat(e.material_id)) ? existentes.find(e => normMat(e.material_id)).material_id : null
+  const prevO  = existentes?.find(e => e.material_otro)?.material_otro || ''
+  const matCambio = curMat !== normMat(prevMat) || curOtro !== prevO
 
-  if ((material_id || material_otro) && (String(material_id) !== String(prevMaterial ?? '') || material_otro !== prevMatOtro)) {
-    const nombreMat = material_otro || (((await supabase.from('materiales').select('nombre').eq('id', material_id).maybeSingle()).data?.nombre) ?? material_id)
+  const prevComent = existentes?.[0]?.comentarios ?? null
+
+  if (matCambio && (curMat || curOtro)) {
+    const nombreMat = curOtro || (((await supabase.from('materiales').select('nombre').eq('id', material_id).maybeSingle()).data?.nombre) ?? material_id)
     await registrarEvento(no_orden, 'material', `Material registrado: ${nombreMat}.`, actualizado_por_id)
   }
 
