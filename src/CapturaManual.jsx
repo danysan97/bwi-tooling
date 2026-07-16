@@ -191,9 +191,22 @@ function FormCaptura({ usuario, onExito }) {
     // pero marcamos los datos manuales en la descripción
     const solicitanteId = solicitante?.id ?? usuario.id;
 
-    const descripcionFinal = solicitante
-      ? form.descripcion
-      : `[ORDEN MANUAL — Solicitante: ${form.nombre_manual.trim()} / Emp. ${form.empleado_manual.trim()} / ${form.depto_manual || form.area_manual || "—"}]\n\n${form.descripcion}`;
+    // Si el usuario seleccionó alguien del sistema pero editó nombre/empleado, reflejarlo
+    const nombreEditado   = solicitante && form.nombre_manual && form.nombre_manual !== solicitante.nombre_completo;
+    const empleadoEditado = solicitante && form.empleado_manual && form.empleado_manual !== solicitante.no_empleado;
+
+    let descripcionFinal = form.descripcion;
+    if (nombreEditado || empleadoEditado) {
+      const nombre   = form.nombre_manual.trim()   || solicitante.nombre_completo;
+      const empleado = form.empleado_manual.trim()  || solicitante.no_empleado;
+      const depto    = form.depto_manual || form.area_manual || "";
+      descripcionFinal = `[DATOS EDITADOS — Solicitante: ${nombre} / Emp. ${empleado}${depto ? " / " + depto : ""}]\n\n${form.descripcion}`;
+    } else if (!solicitante) {
+      const nombre   = form.nombre_manual.trim();
+      const empleado = form.empleado_manual.trim();
+      const depto    = form.depto_manual || form.area_manual || "";
+      descripcionFinal = `[ORDEN MANUAL — Solicitante: ${nombre} / Emp. ${empleado}${depto ? " / " + depto : ""}]\n\n${form.descripcion}`;
+    }
 
     const { data, error } = await crearOrden({
       solicitante_id:   solicitanteId,
@@ -353,21 +366,21 @@ function FormCaptura({ usuario, onExito }) {
           <div style={{ flex:1, height:1, background:C.border }} />
         </div>
 
-        {/* Campos manuales — se deshabilitan si hay solicitante del sistema */}
+        {/* Campos manuales — siempre editables, prellenados si hay solicitante del sistema */}
         <Row>
           <div>
-            <Label required={!solicitante}>Nombre del solicitante</Label>
-            <Input placeholder="Ej. Carlos Ponce" value={solicitante ? solicitante.nombre_completo : form.nombre_manual}
-              disabled={!!solicitante} error={!!errores.nombre_manual}
-              style={solicitante ? { color:C.muted } : {}}
+            <Label required>Nombre del solicitante</Label>
+            <Input placeholder="Ej. Carlos Ponce"
+              value={form.nombre_manual || (solicitante ? solicitante.nombre_completo : "")}
+              error={!!errores.nombre_manual}
               onChange={e => set("nombre_manual", e.target.value)} />
             <ErrMsg msg={errores.nombre_manual} />
           </div>
           <div>
-            <Label required={!solicitante}>No. de empleado</Label>
-            <Input placeholder="Ej. 33731" value={solicitante ? solicitante.no_empleado : form.empleado_manual}
-              disabled={!!solicitante} error={!!errores.empleado_manual}
-              style={solicitante ? { color:C.muted } : {}}
+            <Label required>No. de empleado</Label>
+            <Input placeholder="Ej. 33731"
+              value={form.empleado_manual || (solicitante ? solicitante.no_empleado : "")}
+              error={!!errores.empleado_manual}
               onChange={e => set("empleado_manual", e.target.value)} />
             <ErrMsg msg={errores.empleado_manual} />
           </div>
