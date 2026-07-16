@@ -388,20 +388,16 @@ function FormCaptura({ usuario, onExito }) {
         <Row>
           <div>
             <Label>Área</Label>
-            {solicitante ? (
-              <Input value={areas.find(a => a.codigo === solicitante.area_codigo)?.nombre ?? "—"} disabled style={{ color:C.muted }} />
-            ) : (
-              <Select value={form.area_manual} onChange={e => set("area_manual", e.target.value)}>
-                <option value="">— Seleccionar —</option>
-                {areas.map(a => <option key={a.codigo} value={a.nombre}>{a.codigo} · {a.nombre}</option>)}
-              </Select>
-            )}
+            <Select value={form.area_manual || (solicitante ? (areas.find(a => a.codigo === solicitante.area_codigo)?.nombre ?? "") : "")}
+              onChange={e => set("area_manual", e.target.value)}>
+              <option value="">— Seleccionar —</option>
+              {areas.map(a => <option key={a.codigo} value={a.nombre}>{a.codigo} · {a.nombre}</option>)}
+            </Select>
           </div>
           <div>
             <Label>Departamento</Label>
             <Input placeholder="Ej. Toolroom, Producción…"
-              value={solicitante ? (solicitante.departamento ?? "") : form.depto_manual}
-              disabled={!!solicitante} style={solicitante ? { color:C.muted } : {}}
+              value={form.depto_manual || (solicitante ? (solicitante.departamento ?? "") : "")}
               onChange={e => set("depto_manual", e.target.value)} />
           </div>
         </Row>
