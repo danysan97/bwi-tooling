@@ -1,27 +1,11 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerUrlPlano, registrarEvento, parseFechaUTC } from "./lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import DatePicker from "./DatePicker.jsx";
+import { C, PRIO_COLOR, PRIO_LABEL, EST_COLOR, EST_LABEL, modalScale, fadeIn, slideUp, glassSurface, glowAccent } from "./theme";
 
-const C = {
-  bg:"#0F1117", surface:"#181C25", border:"#242935",
-  accent:"#3B82F6", success:"#22C55E", warn:"#F59E0B",
-  danger:"#EF4444", muted:"#6B7280", text:"#F1F5F9", textSub:"#94A3B8",
-  purple:"#8B5CF6",
-};
-
-const PRIO = {
-  "1_seguridad":{ label:"Seguridad", color:C.danger },
-  "2_queja_cliente":{ label:"Queja cliente", color:C.warn },
-  "3_maquina_parada":{ label:"Máq. parada", color:"#F97316" },
-  "4_trabajo_rapido":{ label:"Trabajo rápido", color:C.accent },
-  "5_fabricacion":{ label:"Fabricación", color:C.purple },
-};
-
-const EST_COLOR = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted };
-const EST_LABEL = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada" };
-
-const HRS_DIA   = { primero: 8,   segundo: 7.5  };
+const HRS_DIA    = { primero: 8,   segundo: 7.5  };
 const HRS_SEMANA = { primero: 40,  segundo: 37.5 };
 const HRS_MES    = { primero: 160, segundo: 150  };
 
@@ -32,8 +16,22 @@ const Label = ({ children, required }) => (
 );
 
 const Badge = ({ color, label }) => (
-  <span style={{ background:color+"22", color, border:`1px solid ${color}55`, borderRadius:6, padding:"2px 10px", fontSize:11, fontWeight:600, whiteSpace:"nowrap" }}>{label}</span>
+  <span style={{
+    background: color + "18",
+    color,
+    borderRadius: 20,
+    padding: "3px 10px",
+    fontSize: 11,
+    fontWeight: 600,
+    whiteSpace: "nowrap",
+    transition: "all 0.2s",
+  }}>{label}</span>
 );
+
+const focusRing = {
+  onFocus: (e) => { e.target.style.borderColor = C.accent; e.target.style.boxShadow = `0 0 0 3px ${C.accentGlow}`; },
+  onBlur: (e) => { e.target.style.borderColor = C.border; e.target.style.boxShadow = "none"; },
+};
 
 function getSemanaActual() {
   const hoy = new Date();
@@ -49,6 +47,12 @@ function getMesActual() {
   const fin = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0, 23, 59, 59);
   return { inicio, fin };
 }
+
+const inputStyle = {
+  width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`,
+  borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none",
+  transition:"border-color 0.2s, box-shadow 0.2s",
+};
 
 // ── Modal detalle de orden ──────────────────────────────────
 function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado }) {
@@ -99,7 +103,8 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
   };
 
   const o = orden;
-  const prio = PRIO[o.prioridad] ?? {};
+  const prioColor = PRIO_COLOR[o.prioridad] ?? C.muted;
+  const prioLabel = PRIO_LABEL[o.prioridad] ?? o.prioridad;
   const oDate = o.fecha_solicitud ? parseFechaUTC(o.fecha_solicitud) : null;
 
   const abrirImpresion = () => {
@@ -111,7 +116,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
       </div>
       <div style="border:2px solid #1B3A6B;border-radius:4;overflow:hidden">
         <div style="display:flex;border-bottom:1px solid #ccc"><div style="flex:3;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Solicitante</div><div style="font-size:11px;margin-top:2">${o.solicitante_nombre||""}</div></div><div style="flex:1;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">No. de empleado</div><div style="font-size:11px;margin-top:2">${o.solicitante_empleado||""}</div></div><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Área</div><div style="font-size:11px;margin-top:2">${o.area_codigo?`${o.area_codigo} — ${o.area_nombre||""}`:o.area_nombre||""}</div></div><div style="flex:2;padding:4px 8px"><div style="font-size:7px;color:#666;text-transform:uppercase">Departamento</div><div style="font-size:11px;margin-top:2">${o.departamento||""}</div></div></div>
-        <div style="display:flex;border-bottom:1px solid #ccc"><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Fecha de solicitud</div><div style="font-size:11px;margin-top:2">${o.fecha_solicitud?new Date(o.fecha_solicitud).toLocaleDateString("es-MX"):""}</div></div><div style="flex:4;padding:4px 8px"><div style="font-size:7px;color:#666;text-transform:uppercase">Prioridad</div><div style="font-size:11px;font-weight:700;margin-top:2">${PRIO[o.prioridad]?.label||o.prioridad}</div></div></div>
+        <div style="display:flex;border-bottom:1px solid #ccc"><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Fecha de solicitud</div><div style="font-size:11px;margin-top:2">${o.fecha_solicitud?new Date(o.fecha_solicitud).toLocaleDateString("es-MX"):""}</div></div><div style="flex:4;padding:4px 8px"><div style="font-size:7px;color:#666;text-transform:uppercase">Prioridad</div><div style="font-size:11px;font-weight:700;margin-top:2">${PRIO_LABEL[o.prioridad]||o.prioridad}</div></div></div>
         <div style="background:#F5F5F5;padding:3px 8px;font-size:8px;font-weight:700;color:#1B3A6B;text-transform:uppercase;border-bottom:1px solid #ccc">DATOS DE LA PIEZA</div>
         <div style="display:flex;border-bottom:1px solid #ccc"><div style="flex:4;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Nombre de la pieza</div><div style="font-size:11px;font-weight:700;margin-top:2">${o.nombre_pieza||""}</div></div><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">S.E.T.C. #</div><div style="font-size:11px;margin-top:2">${o.setc_numero||""}</div></div><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">No. de plano</div><div style="font-size:11px;margin-top:2">${o.no_plano||""}</div></div><div style="flex:1;padding:4px 8px"><div style="font-size:7px;color:#666;text-transform:uppercase">Cantidad</div><div style="font-size:11px;margin-top:2">${o.cantidad||""}</div></div></div>
         <div style="display:flex;border-bottom:1px solid #ccc"><div style="flex:3;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">No. de máquina / Fixtura / Equipo</div><div style="font-size:11px;margin-top:2">${o.no_maquina||""}</div></div><div style="flex:2;padding:4px 8px;border-right:1px solid #ccc"><div style="font-size:7px;color:#666;text-transform:uppercase">Línea / Celda</div><div style="font-size:11px;margin-top:2">${o.linea_celda||"—"}</div></div><div style="flex:4;padding:4px 8px"><div style="font-size:7px;color:#666;text-transform:uppercase">Autorización urgencia</div><div style="font-size:11px;margin-top:2">${o.autorizada===true?(o.nombre_autoriza?"Autorizado por: "+o.nombre_autoriza+(o.puesto_autoriza?" — "+o.puesto_autoriza:""):"✅ AUTORIZADA"):o.autorizada===false?"❌ RECHAZADA":"___________________________"}</div></div></div>
@@ -133,29 +138,50 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
   };
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"#000000dd", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
-      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, width:"100%", maxWidth:800, maxHeight:"92vh", overflowY:"auto" }}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      style={{
+        position:"fixed", inset:0,
+        background:"rgba(0,0,0,0.6)",
+        backdropFilter:"blur(8px)",
+        WebkitBackdropFilter:"blur(8px)",
+        zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:16
+      }}
+    >
+      <motion.div
+        {...modalScale}
+        style={{
+          background:C.surface,
+          border:`1px solid ${C.border}`,
+          borderRadius:16,
+          width:"100%", maxWidth:800, maxHeight:"92vh", overflowY:"auto",
+          ...glowAccent,
+        }}
+      >
 
         {/* Header */}
         <div style={{ padding:"18px 24px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10 }}>
           <div>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <span style={{ color:C.accent, fontWeight:800, fontSize:20 }}>#{o.no_orden}</span>
-              <Badge color={prio.color} label={prio.label} />
+              <Badge color={prioColor} label={prioLabel} />
               <Badge color={EST_COLOR[o.estado]} label={EST_LABEL[o.estado]} />
             </div>
             <div style={{ color:C.textSub, fontSize:13, marginTop:4 }}>{o.nombre_pieza}</div>
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <button onClick={abrirImpresion} style={{ background:C.border, color:C.textSub, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>🖨 Imprimir</button>
-            <button onClick={onCerrar} style={{ background:C.border, color:C.muted, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:13 }}>✕ Cerrar</button>
+            <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={abrirImpresion} style={{ background:C.border, color:C.textSub, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600, transition:"all 0.2s" }}>🖨 Imprimir</motion.button>
+            <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={onCerrar} style={{ background:C.border, color:C.muted, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:13, transition:"all 0.2s" }}>✕ Cerrar</motion.button>
           </div>
         </div>
 
         {/* Tabs */}
         <div style={{ padding:"0 24px", borderBottom:`1px solid ${C.border}`, display:"flex", gap:0 }}>
           {[["info","Información"],["mi_avance","Mi avance"],["historial","Historial"]].map(([k,l]) => (
-            <button key={k} onClick={() => setTab(k)} style={{ background:"none", border:"none", borderBottom:`2px solid ${tab===k?C.accent:"transparent"}`, color:tab===k?C.accent:C.muted, padding:"12px 18px", cursor:"pointer", fontWeight:600, fontSize:13 }}>
+            <button key={k} onClick={() => setTab(k)} style={{ background:"none", border:"none", borderBottom:`2px solid ${tab===k?C.accent:"transparent"}`, color:tab===k?C.accent:C.muted, padding:"12px 18px", cursor:"pointer", fontWeight:600, fontSize:13, transition:"all 0.2s" }}>
               {l}
             </button>
           ))}
@@ -174,7 +200,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
               <InfoRow label="No. máquina" value={o.no_maquina ?? "—"} />
               <InfoRow label="Línea / celda" value={o.linea_celda ?? "—"} />
               <InfoRow label="Cantidad" value={o.cantidad} />
-              <InfoRow label="Prioridad" value={prio.label} color={prio.color} />
+              <InfoRow label="Prioridad" value={prioLabel} color={prioColor} />
               <InfoRow label="Estado" value={EST_LABEL[o.estado]} color={EST_COLOR[o.estado]} />
               <InfoRow label="Técnicos" value={o.tecnico_nombre ?? "—"} />
               {o.descripcion && (
@@ -220,12 +246,12 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
               <div>
                 <Label>Horas reales trabajadas</Label>
                 <input type="number" step="0.5" min="0" placeholder="Ej. 8.5" value={horas} onChange={e => setHoras(e.target.value)}
-                  style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none" }} />
+                  style={inputStyle} {...focusRing} />
               </div>
               <div>
                 <Label>Material utilizado</Label>
                 <select value={materialId} onChange={e => setMatId(e.target.value)}
-                  style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none", cursor:"pointer" }}>
+                  style={{ ...inputStyle, cursor:"pointer" }} {...focusRing}>
                   <option value="">— Seleccionar —</option>
                   {materiales.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
                   <option value="otro">Otro</option>
@@ -235,17 +261,17 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
                 <div>
                   <Label>Otro material</Label>
                   <input placeholder="Especifica el material" value={materialOtro} onChange={e => setMatOtro(e.target.value)}
-                    style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none" }} />
+                    style={inputStyle} {...focusRing} />
                 </div>
               )}
               <div>
                 <Label>Comentarios</Label>
                 <textarea rows={3} placeholder="Observaciones, detalles del trabajo…" value={comentarios} onChange={e => setComent(e.target.value)}
-                  style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none", resize:"vertical" }} />
+                  style={{ ...inputStyle, resize:"vertical" }} {...focusRing} />
               </div>
-              <button onClick={guardar} disabled={guardando} style={{ background:guardando?C.border:C.accent, color:guardando?C.muted:"#fff", border:"none", borderRadius:10, padding:"11px 0", cursor:guardando?"default":"pointer", fontWeight:700, fontSize:14 }}>
+              <motion.button whileHover={!guardando ? { scale:1.02 } : {}} whileTap={!guardando ? { scale:0.98 } : {}} onClick={guardar} disabled={guardando} style={{ background:guardando?C.border:C.accent, color:guardando?C.muted:"#fff", border:"none", borderRadius:10, padding:"11px 0", cursor:guardando?"default":"pointer", fontWeight:700, fontSize:14, transition:"all 0.2s" }}>
                 {guardando ? "Guardando…" : "Guardar avance"}
-              </button>
+              </motion.button>
             </div>
           )}
 
@@ -273,8 +299,8 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -351,12 +377,17 @@ export default function TecnicoPortal({ usuario, onSalir }) {
     window.print();
   };
 
+  const filterActiveColor = (f) => {
+    if (f === "entregadas") return C.purple;
+    return EST_COLOR[f] || C.accent;
+  };
+
   return (
     <div style={{ minHeight:"100vh", background:C.bg, color:C.text }}>
       {/* Header */}
-      <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"14px 24px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <div style={{ ...glassSurface, borderBottom:`1px solid ${C.border}`, padding:"14px 24px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:100 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:4, height:24, background:C.accent, borderRadius:2 }} />
+          <div style={{ width:4, height:24, background:`linear-gradient(180deg, ${C.accent}, ${C.purple})`, borderRadius:2 }} />
           <span style={{ fontSize:18, fontWeight:800 }}>BWI — TOOLROOM</span>
           <span style={{ color:C.muted, fontSize:12, marginLeft:8 }}>Portal del Técnico</span>
         </div>
@@ -365,14 +396,14 @@ export default function TecnicoPortal({ usuario, onSalir }) {
             <div style={{ fontSize:13, fontWeight:600 }}>{usuario.nombre_completo}</div>
             <div style={{ color:C.muted, fontSize:11 }}>#{usuario.no_empleado} · Turno {turno === "segundo" ? "2° (7.5 hrs)" : "1° (8 hrs)"}</div>
           </div>
-          <button onClick={onSalir} style={{ background:C.border, color:C.muted, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>Salir</button>
+          <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={onSalir} style={{ background:C.border, color:C.muted, border:"none", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600, transition:"all 0.2s" }}>Salir</motion.button>
         </div>
       </div>
 
       {/* Nav tabs */}
-      <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"0 24px", display:"flex", gap:0 }}>
+      <div style={{ ...glassSurface, borderBottom:`1px solid ${C.border}`, padding:"0 24px", display:"flex", gap:0 }}>
         {[["ordenes","Mis Órdenes"],["rendimiento","Mi Rendimiento"]].map(([k,l]) => (
-          <button key={k} onClick={() => setPantalla(k)} style={{ background:"none", border:"none", borderBottom:`2px solid ${pantalla===k?C.accent:"transparent"}`, color:pantalla===k?C.accent:C.muted, padding:"12px 18px", cursor:"pointer", fontWeight:600, fontSize:13 }}>
+          <button key={k} onClick={() => setPantalla(k)} style={{ background:"none", border:"none", borderBottom:`2px solid ${pantalla===k?C.accent:"transparent"}`, color:pantalla===k?C.accent:C.muted, padding:"12px 18px", cursor:"pointer", fontWeight:600, fontSize:13, transition:"all 0.2s" }}>
             {l}
           </button>
         ))}
@@ -390,34 +421,39 @@ export default function TecnicoPortal({ usuario, onSalir }) {
                 { label:"Horas registradas", value:`${totalHrs.toFixed(1)}`, sub:"hrs", color:C.accent },
                 { label:"Aprovechamiento mes", value:`${aprovMes}%`, color:aprovMes >= 80 ? C.success : aprovMes >= 50 ? C.warn : C.danger },
               ].map(k => (
-                <div key={k.label} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"16px 20px" }}>
+                <motion.div key={k.label} whileHover={{ y:-2, boxShadow:"0 8px 24px rgba(0,0,0,0.3)" }} transition={{ duration:0.2 }} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"16px 20px", transition:"all 0.2s" }}>
                   <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>{k.label}</div>
                   <div style={{ color:k.color, fontSize:26, fontWeight:800 }}>{k.value}{k.sub && <span style={{ fontSize:12, fontWeight:400, color:C.muted }}> {k.sub}</span>}</div>
-                </div>
+                </motion.div>
               ))}
             </div>
 
             {/* Filtros */}
             <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
-              {["todas","nueva_orden","en_proceso","terminada","entregadas"].map(f => (
-                <button key={f} onClick={() => setFiltro(f)} style={{
-                  background:filtro===f?(f==="entregadas"?C.purple:(EST_COLOR[f]||C.accent))+"22":"transparent",
-                  color:filtro===f?(f==="entregadas"?C.purple:(EST_COLOR[f]||C.accent)):C.muted,
-                  border:`1px solid ${filtro===f?(f==="entregadas"?C.purple:(EST_COLOR[f]||C.accent)):C.border}`,
-                  borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600,
-                }}>
-                  {{todas:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregadas:"Entregadas"}[f]}
-                </button>
-              ))}
+              {["todas","nueva_orden","en_proceso","terminada","entregadas"].map(f => {
+                const ac = filterActiveColor(f);
+                const active = filtro === f;
+                return (
+                  <button key={f} onClick={() => setFiltro(f)} style={{
+                    background: active ? ac+"22" : C.surface,
+                    color: active ? ac : C.muted,
+                    border:`1px solid ${active ? ac+"44" : C.border}`,
+                    borderRadius:20, padding:"6px 16px", cursor:"pointer", fontSize:12, fontWeight:600,
+                    transition:"all 0.2s",
+                  }}>
+                    {{todas:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregadas:"Entregadas"}[f]}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Tabla */}
             <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, overflow:"hidden" }}>
               {loading ? <div style={{ padding:40, textAlign:"center", color:C.muted }}>Cargando…</div> : (
-                <div style={{ overflowX:"auto" }}>
+                <div style={{ overflowX:"auto", maxHeight:"65vh", overflowY:"auto" }}>
                   <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                     <thead>
-                      <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                      <tr style={{ ...glassSurface, borderBottom:`1px solid ${C.border}`, position:"sticky", top:0, zIndex:2 }}>
                         {["Folio","Fecha","Pieza","Solicitante","Prioridad","Estado","Inicio","Término","Hrs","Acción"].map(h => (
                           <th key={h} style={{ padding:"10px 16px", color:C.muted, fontWeight:600, textAlign:"left", whiteSpace:"nowrap" }}>{h}</th>
                         ))}
@@ -427,23 +463,26 @@ export default function TecnicoPortal({ usuario, onSalir }) {
                       {filtradas.map((s, i) => {
                         const o = s.ordenes_trabajo;
                         if (!o) return null;
-                        const prio = PRIO[o.prioridad] ?? {};
+                        const prioColor = PRIO_COLOR[o.prioridad] ?? C.muted;
+                        const prioLabel = PRIO_LABEL[o.prioridad] ?? o.prioridad;
                         const oDate = o.fecha_solicitud ? parseFechaUTC(o.fecha_solicitud) : null;
                         return (
-                          <tr key={s.id} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66" }}>
+                          <tr key={s.id} style={{ borderBottom:`1px solid ${C.border}`, transition:"background 0.15s" }}
+                            onMouseEnter={e => e.currentTarget.style.background = C.surface2}
+                            onMouseLeave={e => e.currentTarget.style.background = ""}>
                             <td style={{ padding:"10px 16px", color:C.accent, fontWeight:700 }}>#{o.no_orden}</td>
                             <td style={{ padding:"10px 16px", color:C.textSub }}>{oDate ? oDate.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"2-digit"}) : "—"}</td>
                             <td style={{ padding:"10px 16px", fontWeight:500, maxWidth:150, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{o.nombre_pieza}</td>
                             <td style={{ padding:"10px 16px", color:C.textSub }}>{o.solicitante_nombre ?? "—"}</td>
-                            <td style={{ padding:"10px 16px" }}><Badge color={prio.color} label={prio.label} /></td>
+                            <td style={{ padding:"10px 16px" }}><Badge color={prioColor} label={prioLabel} /></td>
                             <td style={{ padding:"10px 16px" }}><Badge color={EST_COLOR[o.estado]} label={EST_LABEL[o.estado]} /></td>
                             <td style={{ padding:"10px 16px", color:C.textSub, fontSize:12 }}>{s.fecha_inicio ?? "—"}</td>
                             <td style={{ padding:"10px 16px", color:C.textSub, fontSize:12 }}>{s.fecha_termino ?? "—"}</td>
                             <td style={{ padding:"10px 16px", color:C.textSub }}>{s.tiempo_real_hrs ?? "—"}</td>
                             <td style={{ padding:"10px 16px" }}>
-                              <button onClick={() => abrirOrden(o, s)} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:8, padding:"5px 12px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
+                              <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => abrirOrden(o, s)} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:8, padding:"5px 12px", cursor:"pointer", fontSize:12, fontWeight:600, transition:"all 0.2s" }}>
                                 Ver detalle
-                              </button>
+                              </motion.button>
                             </td>
                           </tr>
                         );
@@ -468,10 +507,10 @@ export default function TecnicoPortal({ usuario, onSalir }) {
                 { label:"Aprovechamiento semana", value:`${aprovSem}%`, color:aprovSem >= 80 ? C.success : aprovSem >= 50 ? C.warn : C.danger },
                 { label:"Aprovechamiento mes", value:`${aprovMes}%`, color:aprovMes >= 80 ? C.success : aprovMes >= 50 ? C.warn : C.danger },
               ].map(k => (
-                <div key={k.label} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"18px 22px", textAlign:"center" }}>
+                <motion.div key={k.label} whileHover={{ y:-2, boxShadow:"0 8px 24px rgba(0,0,0,0.3)" }} transition={{ duration:0.2 }} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"18px 22px", textAlign:"center", transition:"all 0.2s" }}>
                   <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>{k.label}</div>
                   <div style={{ color:k.color, fontSize:28, fontWeight:800 }}>{k.value}{k.sub && <span style={{ fontSize:12, fontWeight:400, color:C.muted }}> {k.sub}</span>}</div>
-                </div>
+                </motion.div>
               ))}
             </div>
 
@@ -522,16 +561,18 @@ export default function TecnicoPortal({ usuario, onSalir }) {
       </div>
 
       {/* Modal detalle */}
-      {ordenSel && (
-        <DetalleOrden
-          orden={ordenSel}
-          segRow={segRow}
-          usuario={usuario}
-          materiales={materiales}
-          onCerrar={() => { setOS(null); setSegRow(null); }}
-          onGuardado={cargar}
-        />
-      )}
+      <AnimatePresence>
+        {ordenSel && (
+          <DetalleOrden
+            orden={ordenSel}
+            segRow={segRow}
+            usuario={usuario}
+            materiales={materiales}
+            onCerrar={() => { setOS(null); setSegRow(null); }}
+            onGuardado={cargar}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

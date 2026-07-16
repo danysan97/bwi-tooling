@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import ImprimirOrden from "./ImprimirOrden.jsx";
 import PanelTecnicos from "./PanelTecnicos.jsx";
@@ -14,54 +15,48 @@ import {
   cargarHistorial, agregarComentarioHistorial, registrarEvento, parseFechaUTC,
 } from "./lib/supabase";
 import DatePicker from "./DatePicker.jsx";
-
-const C = {
-  bg:"#0F1117", surface:"#181C25", border:"#242935",
-  accent:"#3B82F6", success:"#22C55E", warn:"#F59E0B",
-  danger:"#EF4444", muted:"#6B7280", text:"#F1F5F9", textSub:"#94A3B8",
-  purple:"#8B5CF6",
-};
-const PRIO_COLOR = { "1_seguridad":C.danger,"2_queja_cliente":C.warn,"3_maquina_parada":"#F97316","4_trabajo_rapido":C.accent,"5_fabricacion":C.muted };
-const PRIO_LABEL = { "1_seguridad":"1·Seguridad","2_queja_cliente":"2·Queja","3_maquina_parada":"3·Máq.parada","4_trabajo_rapido":"4·Rápido","5_fabricacion":"5·Fabricación" };
-const EST_COLOR  = { nueva_orden:C.accent, en_proceso:C.warn, terminada:C.success, cancelada:C.muted };
-const EST_LABEL  = { nueva_orden:"Nueva", en_proceso:"En proceso", terminada:"Terminada", cancelada:"Cancelada" };
+import { C, PRIO_COLOR, PRIO_LABEL, EST_COLOR, EST_LABEL, modalScale, fadeIn, slideUp, glassSurface, glowAccent } from "./theme";
 
 const Card = ({ children, style={} }) => (
-  <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"20px 24px", ...style }}>{children}</div>
+  <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"20px 24px", transition:"all 0.2s", ...style }}>{children}</div>
 );
 const Badge = ({ estado, entregada }) => {
   const isEnt = estado === "terminada" && entregada;
   const c = isEnt ? C.purple : EST_COLOR[estado];
   const l = isEnt ? "Entregada" : EST_LABEL[estado];
-  return <span style={{ background:c+"22", color:c, border:`1px solid ${c}55`, borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{l}</span>;
+  return <span style={{ background:c+"15", color:c, border:"none", borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{l}</span>;
 };
 const PrioBadge = ({ p }) => (
-  <span style={{ background:PRIO_COLOR[p]+"22", color:PRIO_COLOR[p], border:`1px solid ${PRIO_COLOR[p]}55`, borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{PRIO_LABEL[p]}</span>
+  <span style={{ background:PRIO_COLOR[p]+"15", color:PRIO_COLOR[p], border:"none", borderRadius:6, padding:"2px 10px", fontSize:12, fontWeight:600 }}>{PRIO_LABEL[p]}</span>
 );
-const KPI = ({ label, value, sub, color=C.text }) => (
-  <Card>
-    <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{label}</div>
-    <div style={{ color, fontSize:32, fontWeight:700, lineHeight:1 }}>{value}</div>
-    {sub && <div style={{ color:C.muted, fontSize:12, marginTop:6 }}>{sub}</div>}
-  </Card>
-);
+const KPI = ({ label, value, sub, color=C.text }) => {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <Card style={{ transform: hovered ? "translateY(-2px)" : "translateY(0)", boxShadow: hovered ? "0 8px 24px rgba(0,0,0,0.25)" : "none", transition:"all 0.2s" }}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+      <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>{label}</div>
+      <div style={{ color, fontSize:32, fontWeight:700, lineHeight:1 }}>{value}</div>
+      {sub && <div style={{ color:C.muted, fontSize:12, marginTop:6 }}>{sub}</div>}
+    </Card>
+  );
+};
 const Label = ({ children, required }) => (
   <label style={{ display:"block", color:C.textSub, fontSize:12, fontWeight:600, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>
     {children}{required && <span style={{ color:C.danger, marginLeft:3 }}>*</span>}
   </label>
 );
 const Input = ({ ...props }) => (
-  <input {...props} style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none", ...props.style }}
-    onFocus={e => e.target.style.borderColor=C.accent}
-    onBlur={e => e.target.style.borderColor=C.border} />
+  <input {...props} style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none", transition:"border-color 0.2s, box-shadow 0.2s", ...props.style }}
+    onFocus={e => { e.target.style.borderColor=C.accent; e.target.style.boxShadow=`0 0 0 3px ${C.accentGlow}`; }}
+    onBlur={e => { e.target.style.borderColor=C.border; e.target.style.boxShadow="none"; }} />
 );
 const Select = ({ children, ...props }) => (
-  <select {...props} style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none", cursor:"pointer", ...props.style }}>{children}</select>
+  <select {...props} style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none", cursor:"pointer", transition:"border-color 0.2s", ...props.style }}>{children}</select>
 );
 const Textarea = ({ ...props }) => (
-  <textarea {...props} style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none", resize:"vertical", minHeight:70, fontFamily:"inherit" }}
-    onFocus={e => e.target.style.borderColor=C.accent}
-    onBlur={e => e.target.style.borderColor=C.border} />
+  <textarea {...props} style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none", resize:"vertical", minHeight:70, fontFamily:"inherit", transition:"border-color 0.2s, box-shadow 0.2s" }}
+    onFocus={e => { e.target.style.borderColor=C.accent; e.target.style.boxShadow=`0 0 0 3px ${C.accentGlow}`; }}
+    onBlur={e => { e.target.style.borderColor=C.border; e.target.style.boxShadow="none"; }} />
 );
 const Spinner = () => <div style={{ textAlign:"center", padding:60, color:C.muted }}>Cargando…</div>;
 const sinSETC = (o) => {
@@ -72,7 +67,7 @@ const sinSETC = (o) => {
 const Tooltip2 = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 14px" }}>
+    <div style={{ background:"rgba(24,28,37,0.9)", backdropFilter:"blur(8px)", border:`1px solid ${C.borderLight}`, borderRadius:8, padding:"10px 14px" }}>
       <div style={{ color:C.textSub, fontSize:12, marginBottom:4 }}>{label}</div>
       {payload.map((p,i) => <div key={i} style={{ color:p.color, fontSize:13 }}>{p.name}: <strong>{p.value}</strong></div>)}
     </div>
@@ -187,308 +182,310 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const horasTotal = tecnicosSeg.reduce((s, t) => s + (Number(t.tiempo_real_hrs) || 0), 0);
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"#000000cc", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }} onClick={onClose}>
-      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:28, width:"100%", maxWidth:620, maxHeight:"90vh", overflowY:"auto" }} onClick={e => e.stopPropagation()}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }} onClick={onClose}>
+      <AnimatePresence>
+        <motion.div key="modal" {...modalScale} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:28, width:"100%", maxWidth:620, maxHeight:"90vh", overflowY:"auto" }} onClick={e => e.stopPropagation()}>
 
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start", marginBottom:20 }}>
-          <div>
-            <div style={{ color:C.muted, fontSize:12 }}>ORDEN #{orden.no_orden}</div>
-            <div style={{ color:C.text, fontSize:20, fontWeight:700 }}>{orden.nombre_pieza}</div>
-            <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>{orden.solicitante_nombre} · {orden.solicitante_empleado} · {orden.area_nombre}</div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start", marginBottom:20 }}>
+            <div>
+              <div style={{ color:C.muted, fontSize:12 }}>ORDEN #{orden.no_orden}</div>
+              <div style={{ color:C.text, fontSize:20, fontWeight:700 }}>{orden.nombre_pieza}</div>
+              <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>{orden.solicitante_nombre} · {orden.solicitante_empleado} · {orden.area_nombre}</div>
+            </div>
+            <button onClick={onClose} style={{ background:"none", border:"none", color:C.muted, cursor:"pointer", fontSize:20, transition:"color 0.2s" }} onMouseEnter={e => e.target.style.color=C.text} onMouseLeave={e => e.target.style.color=C.muted}>✕</button>
           </div>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:C.muted, cursor:"pointer", fontSize:20 }}>✕</button>
-        </div>
 
-        <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
-          <Badge estado={orden.estado} />
-          <PrioBadge p={orden.prioridad} />
-          {orden.archivo_url && (
-            <button onClick={verPlano} style={{ background:C.border, color:C.text, border:"none", borderRadius:6, padding:"2px 10px", fontSize:12, cursor:"pointer" }}>📎 Ver plano</button>
-          )}
-          <button onClick={() => setImp(true)} style={{ background:"#1B3A6B", color:"#fff", border:"none", borderRadius:6, padding:"2px 10px", fontSize:12, cursor:"pointer" }}>🖨️ Imprimir</button>
-        </div>
+          <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
+            <Badge estado={orden.estado} />
+            <PrioBadge p={orden.prioridad} />
+            {orden.archivo_url && (
+              <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={verPlano} style={{ background:C.border, color:C.text, border:"none", borderRadius:6, padding:"2px 10px", fontSize:12, cursor:"pointer", transition:"all 0.2s" }}>📎 Ver plano</motion.button>
+            )}
+            <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setImp(true)} style={{ background:"#1B3A6B", color:"#fff", border:"none", borderRadius:6, padding:"2px 10px", fontSize:12, cursor:"pointer" }}>🖨️ Imprimir</motion.button>
+          </div>
 
-        <div style={{ display:"flex", gap:4, marginBottom:20, background:C.bg, borderRadius:8, padding:4 }}>
-          {["detalle","seguimiento","estado","historial"].map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ flex:1, background:tab===t?C.accent:"transparent", color:tab===t?"#fff":C.muted, border:"none", borderRadius:6, padding:"7px 0", cursor:"pointer", fontWeight:600, fontSize:12, textTransform:"capitalize" }}>{t}</button>
-          ))}
-        </div>
-
-        {/* Detalle */}
-        {tab === "detalle" && (
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-            {[
-              ["Fecha solicitud", orden.fecha_solicitud?.slice(0,10)],
-              ["Cantidad", orden.cantidad],
-              ["S.E.T.C. #", orden.setc_numero || "—"],
-              ["No. plano", orden.no_plano || "—"],
-              ["No. máquina", orden.no_maquina || "—"],
-              ["Línea / Celda", orden.linea_celda || "—"],
-              ["Departamento", orden.departamento || "—"],
-              ["Técnico(s)", orden.tecnico_nombre || "Sin asignar"],
-              ["Material", orden.material_usado || "—"],
-              ["Fecha inicio", orden.fecha_inicio || "—"],
-              ["Fecha término", orden.fecha_termino || "—"],
-              ["Horas totales", orden.tiempo_real_hrs ? `${orden.tiempo_real_hrs} hrs` : "—"],
-            ].map(([k,v]) => (
-              <div key={k}><div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>{k}</div><div style={{ color:C.text, fontSize:14 }}>{v}</div></div>
+          <div style={{ display:"flex", gap:4, marginBottom:20, background:C.bg, borderRadius:9999, padding:4 }}>
+            {["detalle","seguimiento","estado","historial"].map(t => (
+              <motion.button key={t} whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setTab(t)} style={{ flex:1, background:tab===t?C.accent:"transparent", color:tab===t?"#fff":C.muted, border:"none", borderRadius:9999, padding:"7px 0", cursor:"pointer", fontWeight:600, fontSize:12, textTransform:"capitalize", transition:"all 0.2s" }}>{t}</motion.button>
             ))}
-            {sinSETC(orden) && (
-              <div style={{ gridColumn:"1/-1", background:C.danger+"18", border:`1px solid ${C.danger}55`, borderRadius:8, padding:"10px 14px", color:C.danger, fontWeight:600, fontSize:13 }}>
-                ⚠️ SIN NUMERO S.E.T.C. # — NO ESTA DADA DE ALTA
-              </div>
-            )}
-            {orden.autorizada === true && (orden.nombre_autoriza || orden.autorizado_por_nombre) && (
-              <div style={{ gridColumn:"1/-1", background:C.success+"18", border:`1px solid ${C.success}55`, borderRadius:8, padding:"12px 16px" }}>
-                <div style={{ color:C.success, fontWeight:700, fontSize:14, marginBottom:6 }}>✅ Autorizada</div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:13 }}>
-                  <div><div style={{ color:C.muted, fontSize:11 }}>Autorizado por (Nombre)</div><div style={{ color:C.text, fontWeight:600 }}>{orden.nombre_autoriza ?? orden.autorizado_por_nombre ?? "—"}</div></div>
-                  <div><div style={{ color:C.muted, fontSize:11 }}>Puesto</div><div style={{ color:C.text, fontWeight:600 }}>{orden.puesto_autoriza ?? orden.autorizado_por_puesto ?? "—"}</div></div>
-                </div>
-              </div>
-            )}
-            {orden.autorizada === false && (
-              <div style={{ gridColumn:"1/-1", background:C.danger+"18", border:`1px solid ${C.danger}55`, borderRadius:8, padding:"12px 16px" }}>
-                <div style={{ color:C.danger, fontWeight:700, fontSize:14, marginBottom:6 }}>❌ Rechazada</div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:13 }}>
-                  <div><div style={{ color:C.muted, fontSize:11 }}>Rechazado por (Nombre)</div><div style={{ color:C.text, fontWeight:600 }}>{orden.nombre_autoriza ?? orden.autorizado_por_nombre ?? "—"}</div></div>
-                  <div><div style={{ color:C.muted, fontSize:11 }}>Puesto</div><div style={{ color:C.text, fontWeight:600 }}>{orden.puesto_autoriza ?? orden.autorizado_por_puesto ?? "—"}</div></div>
-                </div>
-                {orden.motivo_rechazo && <div style={{ color:C.muted, fontSize:12, marginTop:8, borderTop:`1px solid ${C.border}`, paddingTop:8 }}>Motivo: {orden.motivo_rechazo}</div>}
-              </div>
-            )}
-            <div style={{ gridColumn:"1/-1" }}>
-              <div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>Descripción</div>
-              <div style={{ color:C.text, fontSize:14 }}>{orden.descripcion}</div>
-            </div>
-            {planoUrl && (
-              <div style={{ gridColumn:"1/-1", marginTop:4 }}>
-                <div style={{ color:C.muted, fontSize:11, marginBottom:6 }}>Plano / Archivo adjunto</div>
-                {orden.archivo_nombre?.match(/\.(pdf)$/i) ? (
-                  <iframe src={planoUrl} style={{ width:"100%", height:400, border:`1px solid ${C.border}`, borderRadius:8 }} title="Plano" />
-                ) : (
-                  <a href={planoUrl} target="_blank" rel="noopener noreferrer">
-                    <img src={planoUrl} alt="Plano" style={{ maxWidth:"100%", maxHeight:400, borderRadius:8, border:`1px solid ${C.border}`, cursor:"pointer" }} />
-                  </a>
-                )}
-              </div>
-            )}
           </div>
-        )}
 
-        {/* Seguimiento — Multi-técnico */}
-        {tab === "seguimiento" && (
-          <div style={{ display:"grid", gap:14 }}>
-
-            {/* Lista de técnicos */}
-            <div>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                <Label>Técnicos asignados ({tecnicosSeg.length})</Label>
-                <button onClick={agregarTecnico} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:11, fontWeight:600 }}>+ Agregar técnico</button>
-              </div>
-              {tecnicosSeg.map((t, idx) => (
-                <div key={idx} style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:10, padding:12, marginBottom:8 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                    <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>TÉCNICO {idx + 1}</span>
-                    {tecnicosSeg.length > 1 && (
-                      <button onClick={() => quitarTecnico(idx)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:11 }}>✕ Quitar</button>
-                    )}
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                    <div>
-                      <Label>Técnico</Label>
-                      <Select value={t.tecnico_id} onChange={e => actualizarTec(idx, "tecnico_id", e.target.value)}>
-                        <option value="">— Seleccionar —</option>
-                        {tecnicos.map(tec => <option key={tec.id} value={tec.id}>{tec.nombre_completo}</option>)}
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Horas reales</Label>
-                      <Input type="number" min="0" step="0.5" placeholder="0.0" value={t.tiempo_real_hrs} onChange={e => actualizarTec(idx, "tiempo_real_hrs", e.target.value)} />
-                    </div>
-                    <div><Label>Fecha inicio</Label><DatePicker value={t.fecha_inicio} onChange={v => actualizarTec(idx, "fecha_inicio", v)} /></div>
-                    <div>
-                      <Label>Fecha término</Label>
-                      {(estado === "en_proceso" || estado === "terminada") ? (
-                        <DatePicker value={t.fecha_termino} onChange={v => actualizarTec(idx, "fecha_termino", v)} />
-                      ) : (
-                        <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.muted, fontSize:12 }}>
-                          Disponible al estar en proceso
-                        </div>
-                      )}
-                    </div>
+          {/* Detalle */}
+          {tab === "detalle" && (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              {[
+                ["Fecha solicitud", orden.fecha_solicitud?.slice(0,10)],
+                ["Cantidad", orden.cantidad],
+                ["S.E.T.C. #", orden.setc_numero || "—"],
+                ["No. plano", orden.no_plano || "—"],
+                ["No. máquina", orden.no_maquina || "—"],
+                ["Línea / Celda", orden.linea_celda || "—"],
+                ["Departamento", orden.departamento || "—"],
+                ["Técnico(s)", orden.tecnico_nombre || "Sin asignar"],
+                ["Material", orden.material_usado || "—"],
+                ["Fecha inicio", orden.fecha_inicio || "—"],
+                ["Fecha término", orden.fecha_termino || "—"],
+                ["Horas totales", orden.tiempo_real_hrs ? `${orden.tiempo_real_hrs} hrs` : "—"],
+              ].map(([k,v]) => (
+                <div key={k}><div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>{k}</div><div style={{ color:C.text, fontSize:14 }}>{v}</div></div>
+              ))}
+              {sinSETC(orden) && (
+                <div style={{ gridColumn:"1/-1", background:C.danger+"18", border:`1px solid ${C.danger}55`, borderRadius:8, padding:"10px 14px", color:C.danger, fontWeight:600, fontSize:13 }}>
+                  ⚠️ SIN NUMERO S.E.T.C. # — NO ESTA DADA DE ALTA
+                </div>
+              )}
+              {orden.autorizada === true && (orden.nombre_autoriza || orden.autorizado_por_nombre) && (
+                <div style={{ gridColumn:"1/-1", background:C.success+"18", border:`1px solid ${C.success}55`, borderRadius:8, padding:"12px 16px" }}>
+                  <div style={{ color:C.success, fontWeight:700, fontSize:14, marginBottom:6 }}>✅ Autorizada</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:13 }}>
+                    <div><div style={{ color:C.muted, fontSize:11 }}>Autorizado por (Nombre)</div><div style={{ color:C.text, fontWeight:600 }}>{orden.nombre_autoriza ?? orden.autorizado_por_nombre ?? "—"}</div></div>
+                    <div><div style={{ color:C.muted, fontSize:11 }}>Puesto</div><div style={{ color:C.text, fontWeight:600 }}>{orden.puesto_autoriza ?? orden.autorizado_por_puesto ?? "—"}</div></div>
                   </div>
                 </div>
-              ))}
-              <div style={{ color:C.textSub, fontSize:12, marginTop:4 }}>Total horas: <strong style={{ color:C.text }}>{horasTotal.toFixed(1)} hrs</strong></div>
-            </div>
-
-            {/* Material compartido */}
-            <div>
-              <Label>Material</Label>
-              <Select value={materialId} onChange={e => setMatId(e.target.value)}>
-                <option value="">— Seleccionar —</option>
-                {materiales.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-                <option value="otro">Otro…</option>
-              </Select>
-              {materialId === "otro" && (
-                <div style={{ marginTop:8 }}><Label>Especificar material</Label><Input placeholder="Ej. Acero D2" value={materialOtro} onChange={e => setMatOtro(e.target.value)} /></div>
+              )}
+              {orden.autorizada === false && (
+                <div style={{ gridColumn:"1/-1", background:C.danger+"18", border:`1px solid ${C.danger}55`, borderRadius:8, padding:"12px 16px" }}>
+                  <div style={{ color:C.danger, fontWeight:700, fontSize:14, marginBottom:6 }}>❌ Rechazada</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:13 }}>
+                    <div><div style={{ color:C.muted, fontSize:11 }}>Rechazado por (Nombre)</div><div style={{ color:C.text, fontWeight:600 }}>{orden.nombre_autoriza ?? orden.autorizado_por_nombre ?? "—"}</div></div>
+                    <div><div style={{ color:C.muted, fontSize:11 }}>Puesto</div><div style={{ color:C.text, fontWeight:600 }}>{orden.puesto_autoriza ?? orden.autorizado_por_puesto ?? "—"}</div></div>
+                  </div>
+                  {orden.motivo_rechazo && <div style={{ color:C.muted, fontSize:12, marginTop:8, borderTop:`1px solid ${C.border}`, paddingTop:8 }}>Motivo: {orden.motivo_rechazo}</div>}
+                </div>
+              )}
+              <div style={{ gridColumn:"1/-1" }}>
+                <div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>Descripción</div>
+                <div style={{ color:C.text, fontSize:14 }}>{orden.descripcion}</div>
+              </div>
+              {planoUrl && (
+                <div style={{ gridColumn:"1/-1", marginTop:4 }}>
+                  <div style={{ color:C.muted, fontSize:11, marginBottom:6 }}>Plano / Archivo adjunto</div>
+                  {orden.archivo_nombre?.match(/\.(pdf)$/i) ? (
+                    <iframe src={planoUrl} style={{ width:"100%", height:400, border:`1px solid ${C.border}`, borderRadius:8 }} title="Plano" />
+                  ) : (
+                    <a href={planoUrl} target="_blank" rel="noopener noreferrer">
+                      <img src={planoUrl} alt="Plano" style={{ maxWidth:"100%", maxHeight:400, borderRadius:8, border:`1px solid ${C.border}`, cursor:"pointer" }} />
+                    </a>
+                  )}
+                </div>
               )}
             </div>
+          )}
 
-            {/* Comentarios compartidos */}
-            <div><Label>Comentarios del taller</Label><Textarea rows={3} placeholder="Observaciones, ajustes, detalles…" value={comentarios} onChange={e => setComentSeg(e.target.value)} /></div>
+          {/* Seguimiento — Multi-técnico */}
+          {tab === "seguimiento" && (
+            <div style={{ display:"grid", gap:14 }}>
 
-            {msg && <div style={{ color: msg.includes("Error") ? C.danger : C.success, fontSize:13 }}>{msg}</div>}
-            <button onClick={guardarSeg} disabled={guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"11px 0", fontWeight:700, cursor:"pointer" }}>
-              {guardando ? "Guardando…" : "Guardar seguimiento"}
-            </button>
-          </div>
-        )}
-
-        {/* Estado */}
-        {tab === "estado" && (
-          <div style={{ display:"grid", gap:12 }}>
-
-            {/* Autorización para prioridad 1 y 2 */}
-            {(orden.prioridad === "1_seguridad" || orden.prioridad === "2_queja_cliente") && (
-              <div style={{
-                background: orden.autorizada === null || orden.autorizada === undefined ? C.warn+"18" : orden.autorizada ? C.success+"18" : C.danger+"18",
-                border: `1px solid ${orden.autorizada === null || orden.autorizada === undefined ? C.warn : orden.autorizada ? C.success : C.danger}55`,
-                borderRadius:10, padding:"14px 16px"
-              }}>
-                <div style={{ fontWeight:700, fontSize:14, marginBottom:8,
-                  color: orden.autorizada === null || orden.autorizada === undefined ? C.warn : orden.autorizada ? C.success : C.danger }}>
-                  {orden.autorizada === null || orden.autorizada === undefined ? "⚠️ Requiere autorización de Gerencia" : orden.autorizada ? "✅ Autorizada" : "❌ Rechazada"}
+              {/* Lista de técnicos */}
+              <div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                  <Label>Técnicos asignados ({tecnicosSeg.length})</Label>
+                  <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={agregarTecnico} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:9999, padding:"4px 10px", cursor:"pointer", fontSize:11, fontWeight:600, transition:"all 0.2s" }}>+ Agregar técnico</motion.button>
                 </div>
-                {(orden.autorizada === null || orden.autorizada === undefined) && (
-                  <>
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+                {tecnicosSeg.map((t, idx) => (
+                  <div key={idx} style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:10, padding:12, marginBottom:8 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                      <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>TÉCNICO {idx + 1}</span>
+                      {tecnicosSeg.length > 1 && (
+                        <button onClick={() => quitarTecnico(idx)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:11, transition:"opacity 0.2s" }}>✕ Quitar</button>
+                      )}
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                       <div>
-                        <Label>Nombre de quien autoriza *</Label>
-                        <Input placeholder="Ej. Ing. Carlos Méndez" value={nombreAut} onChange={e => setNombreAut(e.target.value)} />
+                        <Label>Técnico</Label>
+                        <Select value={t.tecnico_id} onChange={e => actualizarTec(idx, "tecnico_id", e.target.value)}>
+                          <option value="">— Seleccionar —</option>
+                          {tecnicos.map(tec => <option key={tec.id} value={tec.id}>{tec.nombre_completo}</option>)}
+                        </Select>
                       </div>
                       <div>
-                        <Label>Puesto *</Label>
-                        <Input placeholder="Ej. Gerente de Mantenimiento" value={puestoAut} onChange={e => setPuestoAut(e.target.value)} />
+                        <Label>Horas reales</Label>
+                        <Input type="number" min="0" step="0.5" placeholder="0.0" value={t.tiempo_real_hrs} onChange={e => actualizarTec(idx, "tiempo_real_hrs", e.target.value)} />
+                      </div>
+                      <div><Label>Fecha inicio</Label><DatePicker value={t.fecha_inicio} onChange={v => actualizarTec(idx, "fecha_inicio", v)} /></div>
+                      <div>
+                        <Label>Fecha término</Label>
+                        {(estado === "en_proceso" || estado === "terminada") ? (
+                          <DatePicker value={t.fecha_termino} onChange={v => actualizarTec(idx, "fecha_termino", v)} />
+                        ) : (
+                          <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.muted, fontSize:12 }}>
+                            Disponible al estar en proceso
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div style={{ marginBottom:8 }}>
-                      <Label>Comentario *</Label>
-                      <Textarea rows={2} placeholder="Escribe un comentario para autorizar o rechazar…" value={coment} onChange={e => setComent(e.target.value)} />
-                    </div>
-                    <div style={{ display:"flex", gap:8 }}>
-                      <button onClick={async () => {
-                        if (!coment.trim()) { setMsg("Escribe un comentario antes de autorizar."); return; }
-                        if (!nombreAut.trim()) { setMsg("Indica el nombre de quien autoriza."); return; }
-                        if (!puestoAut.trim()) { setMsg("Indica el puesto de quien autoriza."); return; }
-                        setG(true);
-                        await supabase.from("ordenes_trabajo").update({ autorizada: true, autorizado_por: usuario.id, nombre_autoriza: nombreAut.trim(), puesto_autoriza: puestoAut.trim() }).eq("no_orden", orden.no_orden);
-                        const detalle = `Autorizado por ${nombreAut.trim()} — ${puestoAut.trim()}. ${coment.trim()}`;
-                        await registrarEvento(orden.no_orden, 'autorizacion', detalle, usuario.id);
-                        setG(false); setMsg("Orden autorizada."); onActualizado();
-                      }} disabled={guardando} style={{ flex:1, background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"10px 0", fontWeight:700, cursor:"pointer", fontSize:13 }}>
-                        ✅ Autorizar
-                      </button>
-                      <button onClick={async () => {
-                        if (!coment.trim()) { setMsg("Escribe el motivo del rechazo."); return; }
-                        if (!nombreAut.trim()) { setMsg("Indica el nombre de quien rechaza."); return; }
-                        if (!puestoAut.trim()) { setMsg("Indica el puesto de quien rechaza."); return; }
-                        setG(true);
-                        await supabase.from("ordenes_trabajo").update({ autorizada: false, autorizado_por: usuario.id, motivo_rechazo: coment, nombre_autoriza: nombreAut.trim(), puesto_autoriza: puestoAut.trim() }).eq("no_orden", orden.no_orden);
-                        await registrarEvento(orden.no_orden, 'autorizacion', `Rechazado por ${nombreAut.trim()} — ${puestoAut.trim()}. Motivo: ${coment.trim()}`, usuario.id);
-                        setG(false); setMsg("Orden rechazada."); onActualizado();
-                      }} disabled={guardando} style={{ flex:1, background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"10px 0", fontWeight:700, cursor:"pointer", fontSize:13 }}>
-                        ❌ Rechazar
-                      </button>
-                    </div>
-                  </>
-                )}
-                {orden.autorizada === false && orden.motivo_rechazo && (
-                  <div style={{ color:C.muted, fontSize:12, marginTop:6 }}>Motivo: {orden.motivo_rechazo}</div>
-                )}
-                {orden.autorizada !== null && orden.autorizada !== undefined && (orden.nombre_autoriza || orden.autorizado_por_nombre) && (
-                  <div style={{ fontSize:12, marginTop:6, color:C.textSub }}>Autorizado por: <strong>{orden.nombre_autoriza ?? orden.autorizado_por_nombre}</strong>{(orden.puesto_autoriza ?? orden.autorizado_por_puesto) ? ` — ${orden.puesto_autoriza ?? orden.autorizado_por_puesto}` : ""}</div>
-                )}
-                {msg && <div style={{ color:C.success, fontSize:13, marginTop:8 }}>{msg}</div>}
-              </div>
-            )}
-
-            {/* Confirmación entregada — solo cuando está terminada */}
-            {orden.estado === "terminada" && !orden.entregada && (
-              <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10 }}>
-                <div style={{ flex:1 }}>
-                  <div style={{ color:C.text, fontWeight:600, fontSize:14 }}>📦 ¿Trabajo entregado?</div>
-                  <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>Marca cuando el solicitante recoja la pieza</div>
-                </div>
-                {!confirmandoEntrega ? (
-                  <button onClick={() => setConfEntrega(true)} disabled={guardando} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:8, padding:"8px 18px", cursor:"pointer", fontWeight:700, fontSize:13 }}>¿Entregado?</button>
-                ) : (
-                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                    <span style={{ color:C.text, fontSize:13, fontWeight:600 }}>¿Confirmas?</span>
-                    <button onClick={async () => {
-                      setG(true);
-                      await supabase.from("ordenes_trabajo").update({ entregada: true }).eq("no_orden", orden.no_orden);
-                      await registrarEvento(orden.no_orden, 'entrega', "Trabajo entregado al solicitante.", usuario.id);
-                      setG(false);
-                      setConfEntrega(false);
-                      onActualizado();
-                      onClose();
-                    }} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✓</button>
-                    <button onClick={() => setConfEntrega(false)} disabled={guardando} style={{ background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✕</button>
                   </div>
+                ))}
+                <div style={{ color:C.textSub, fontSize:12, marginTop:4 }}>Total horas: <strong style={{ color:C.text }}>{horasTotal.toFixed(1)} hrs</strong></div>
+              </div>
+
+              {/* Material compartido */}
+              <div>
+                <Label>Material</Label>
+                <Select value={materialId} onChange={e => setMatId(e.target.value)}>
+                  <option value="">— Seleccionar —</option>
+                  {materiales.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                  <option value="otro">Otro…</option>
+                </Select>
+                {materialId === "otro" && (
+                  <div style={{ marginTop:8 }}><Label>Especificar material</Label><Input placeholder="Ej. Acero D2" value={materialOtro} onChange={e => setMatOtro(e.target.value)} /></div>
                 )}
               </div>
-            )}
-            {orden.estado === "terminada" && orden.entregada && (
-              <div style={{ padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10, color:C.purple, fontWeight:600, fontSize:14 }}>✅ Trabajo entregado</div>
-            )}
-            <div style={{ display:"flex", gap:8 }}>
-              <input placeholder="Agregar comentario…" value={nuevoComentario} onChange={e => setNuevoComent(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && nuevoComentario.trim()) agregarCom(); }} style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
-              <button onClick={agregarCom} disabled={!nuevoComentario.trim() || guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:12 }}>Comentar</button>
-            </div>
-            {msg && <div style={{ color:C.success, fontSize:13 }}>{msg}</div>}
-          </div>
-        )}
 
-        {/* Historial */}
-        {tab === "historial" && (
-          <div style={{ display:"grid", gap:12 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <Label>Historial de la orden</Label>
-              <button onClick={() => cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []))} style={{ background:C.border, color:C.textSub, border:"none", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:11 }}>🔄 Actualizar</button>
-            </div>
+              {/* Comentarios compartidos */}
+              <div><Label>Comentarios del taller</Label><Textarea rows={3} placeholder="Observaciones, ajustes, detalles…" value={comentarios} onChange={e => setComentSeg(e.target.value)} /></div>
 
-            {/* Timeline */}
-            {historial.length === 0 ? (
-              <div style={{ color:C.muted, fontSize:13, padding:20, textAlign:"center" }}>Sin eventos registrados.</div>
-            ) : (
-              <div style={{ position:"relative", paddingLeft:28 }}>
-                <div style={{ position:"absolute", left:10, top:0, bottom:0, width:2, background:C.border }} />
-                {historial.map((ev, i) => {
-                  const icon = { recepcion:"📥", asignacion:"👤", inicio:"🔧", comentario:"💬", autorizacion:"📋", cambio_estado:"🔄", material:"🔩", terminado:"✅", entrega:"📦" }[ev.evento_tipo] ?? "📌";
-                  const color = { recepcion:C.accent, asignacion:"#60A5FA", inicio:C.warn, comentario:"#A78BFA", autorizacion:"#F97316", cambio_estado:C.success, material:"#F59E0B", terminado:C.success, entrega:C.purple }[ev.evento_tipo] ?? C.muted;
-                  const label = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", autorizacion:"Autorización", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega" }[ev.evento_tipo] ?? ev.evento_tipo;
-                  const fecha = parseFechaUTC(ev.fecha_evento);
-                  return (
-                    <div key={ev.id} style={{ position:"relative", marginBottom:16 }}>
-                      <div style={{ position:"absolute", left:-22, top:2, width:16, height:16, borderRadius:"50%", background:color+"22", border:`2px solid ${color}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, zIndex:1 }}>{icon}</div>
-                      <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 14px" }}>
-                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-                          <span style={{ color, fontWeight:600, fontSize:12 }}>{label}</span>
-                          <span style={{ color:C.muted, fontSize:11 }}>{fecha.toLocaleDateString("es-MX")} {fecha.toLocaleTimeString("es-MX", { hour:"2-digit", minute:"2-digit" })}</span>
+              {msg && <div style={{ color: msg.includes("Error") ? C.danger : C.success, fontSize:13 }}>{msg}</div>}
+              <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={guardarSeg} disabled={guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"11px 0", fontWeight:700, cursor:"pointer", transition:"all 0.2s" }}>
+                {guardando ? "Guardando…" : "Guardar seguimiento"}
+              </motion.button>
+            </div>
+          )}
+
+          {/* Estado */}
+          {tab === "estado" && (
+            <div style={{ display:"grid", gap:12 }}>
+
+              {/* Autorización para prioridad 1 y 2 */}
+              {(orden.prioridad === "1_seguridad" || orden.prioridad === "2_queja_cliente") && (
+                <div style={{
+                  background: orden.autorizada === null || orden.autorizada === undefined ? C.warn+"18" : orden.autorizada ? C.success+"18" : C.danger+"18",
+                  border: `1px solid ${orden.autorizada === null || orden.autorizada === undefined ? C.warn : orden.autorizada ? C.success : C.danger}55`,
+                  borderRadius:10, padding:"14px 16px"
+                }}>
+                  <div style={{ fontWeight:700, fontSize:14, marginBottom:8,
+                    color: orden.autorizada === null || orden.autorizada === undefined ? C.warn : orden.autorizada ? C.success : C.danger }}>
+                    {orden.autorizada === null || orden.autorizada === undefined ? "⚠️ Requiere autorización de Gerencia" : orden.autorizada ? "✅ Autorizada" : "❌ Rechazada"}
+                  </div>
+                  {(orden.autorizada === null || orden.autorizada === undefined) && (
+                    <>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+                        <div>
+                          <Label>Nombre de quien autoriza *</Label>
+                          <Input placeholder="Ej. Ing. Carlos Méndez" value={nombreAut} onChange={e => setNombreAut(e.target.value)} />
                         </div>
-                        {ev.detalle && <div style={{ color:C.textSub, fontSize:13 }}>{ev.detalle}</div>}
-                        {ev.creado_por && <div style={{ color:C.muted, fontSize:11, marginTop:2 }}>Por: {ev.usuarios?.nombre_completo ?? "Sistema"}</div>}
+                        <div>
+                          <Label>Puesto *</Label>
+                          <Input placeholder="Ej. Gerente de Mantenimiento" value={puestoAut} onChange={e => setPuestoAut(e.target.value)} />
+                        </div>
                       </div>
+                      <div style={{ marginBottom:8 }}>
+                        <Label>Comentario *</Label>
+                        <Textarea rows={2} placeholder="Escribe un comentario para autorizar o rechazar…" value={coment} onChange={e => setComent(e.target.value)} />
+                      </div>
+                      <div style={{ display:"flex", gap:8 }}>
+                        <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={async () => {
+                          if (!coment.trim()) { setMsg("Escribe un comentario antes de autorizar."); return; }
+                          if (!nombreAut.trim()) { setMsg("Indica el nombre de quien autoriza."); return; }
+                          if (!puestoAut.trim()) { setMsg("Indica el puesto de quien autoriza."); return; }
+                          setG(true);
+                          await supabase.from("ordenes_trabajo").update({ autorizada: true, autorizado_por: usuario.id, nombre_autoriza: nombreAut.trim(), puesto_autoriza: puestoAut.trim() }).eq("no_orden", orden.no_orden);
+                          const detalle = `Autorizado por ${nombreAut.trim()} — ${puestoAut.trim()}. ${coment.trim()}`;
+                          await registrarEvento(orden.no_orden, 'autorizacion', detalle, usuario.id);
+                          setG(false); setMsg("Orden autorizada."); onActualizado();
+                        }} disabled={guardando} style={{ flex:1, background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"10px 0", fontWeight:700, cursor:"pointer", fontSize:13, transition:"all 0.2s" }}>
+                          ✅ Autorizar
+                        </motion.button>
+                        <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={async () => {
+                          if (!coment.trim()) { setMsg("Escribe el motivo del rechazo."); return; }
+                          if (!nombreAut.trim()) { setMsg("Indica el nombre de quien rechaza."); return; }
+                          if (!puestoAut.trim()) { setMsg("Indica el puesto de quien rechaza."); return; }
+                          setG(true);
+                          await supabase.from("ordenes_trabajo").update({ autorizada: false, autorizado_por: usuario.id, motivo_rechazo: coment, nombre_autoriza: nombreAut.trim(), puesto_autoriza: puestoAut.trim() }).eq("no_orden", orden.no_orden);
+                          await registrarEvento(orden.no_orden, 'autorizacion', `Rechazado por ${nombreAut.trim()} — ${puestoAut.trim()}. Motivo: ${coment.trim()}`, usuario.id);
+                          setG(false); setMsg("Orden rechazada."); onActualizado();
+                        }} disabled={guardando} style={{ flex:1, background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"10px 0", fontWeight:700, cursor:"pointer", fontSize:13, transition:"all 0.2s" }}>
+                          ❌ Rechazar
+                        </motion.button>
+                      </div>
+                    </>
+                  )}
+                  {orden.autorizada === false && orden.motivo_rechazo && (
+                    <div style={{ color:C.muted, fontSize:12, marginTop:6 }}>Motivo: {orden.motivo_rechazo}</div>
+                  )}
+                  {orden.autorizada !== null && orden.autorizada !== undefined && (orden.nombre_autoriza || orden.autorizado_por_nombre) && (
+                    <div style={{ fontSize:12, marginTop:6, color:C.textSub }}>Autorizado por: <strong>{orden.nombre_autoriza ?? orden.autorizado_por_nombre}</strong>{(orden.puesto_autoriza ?? orden.autorizado_por_puesto) ? ` — ${orden.puesto_autoriza ?? orden.autorizado_por_puesto}` : ""}</div>
+                  )}
+                  {msg && <div style={{ color:C.success, fontSize:13, marginTop:8 }}>{msg}</div>}
+                </div>
+              )}
+
+              {/* Confirmación entregada — solo cuando está terminada */}
+              {orden.estado === "terminada" && !orden.entregada && (
+                <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10 }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ color:C.text, fontWeight:600, fontSize:14 }}>📦 ¿Trabajo entregado?</div>
+                    <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>Marca cuando el solicitante recoja la pieza</div>
+                  </div>
+                  {!confirmandoEntrega ? (
+                    <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setConfEntrega(true)} disabled={guardando} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:8, padding:"8px 18px", cursor:"pointer", fontWeight:700, fontSize:13, transition:"all 0.2s" }}>¿Entregado?</motion.button>
+                  ) : (
+                    <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                      <span style={{ color:C.text, fontSize:13, fontWeight:600 }}>¿Confirmas?</span>
+                      <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={async () => {
+                        setG(true);
+                        await supabase.from("ordenes_trabajo").update({ entregada: true }).eq("no_orden", orden.no_orden);
+                        await registrarEvento(orden.no_orden, 'entrega', "Trabajo entregado al solicitante.", usuario.id);
+                        setG(false);
+                        setConfEntrega(false);
+                        onActualizado();
+                        onClose();
+                      }} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✓</motion.button>
+                      <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setConfEntrega(false)} disabled={guardando} style={{ background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✕</motion.button>
                     </div>
-                  );
-                })}
+                  )}
+                </div>
+              )}
+              {orden.estado === "terminada" && orden.entregada && (
+                <div style={{ padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10, color:C.purple, fontWeight:600, fontSize:14 }}>✅ Trabajo entregado</div>
+              )}
+              <div style={{ display:"flex", gap:8 }}>
+                <input placeholder="Agregar comentario…" value={nuevoComentario} onChange={e => setNuevoComent(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && nuevoComentario.trim()) agregarCom(); }} style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none", transition:"border-color 0.2s, box-shadow 0.2s" }} onFocus={e => { e.target.style.borderColor=C.accent; e.target.style.boxShadow=`0 0 0 3px ${C.accentGlow}`; }} onBlur={e => { e.target.style.borderColor=C.border; e.target.style.boxShadow="none"; }} />
+                <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={agregarCom} disabled={!nuevoComentario.trim() || guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:12, transition:"all 0.2s" }}>Comentar</motion.button>
               </div>
-            )}
-          </div>
-        )}
-      </div>
+              {msg && <div style={{ color:C.success, fontSize:13 }}>{msg}</div>}
+            </div>
+          )}
+
+          {/* Historial */}
+          {tab === "historial" && (
+            <div style={{ display:"grid", gap:12 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <Label>Historial de la orden</Label>
+                <button onClick={() => cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []))} style={{ background:C.border, color:C.textSub, border:"none", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:11, transition:"background 0.2s" }}>🔄 Actualizar</button>
+              </div>
+
+              {/* Timeline */}
+              {historial.length === 0 ? (
+                <div style={{ color:C.muted, fontSize:13, padding:20, textAlign:"center" }}>Sin eventos registrados.</div>
+              ) : (
+                <div style={{ position:"relative", paddingLeft:28 }}>
+                  <div style={{ position:"absolute", left:10, top:0, bottom:0, width:2, background:C.border }} />
+                  {historial.map((ev, i) => {
+                    const icon = { recepcion:"📥", asignacion:"👤", inicio:"🔧", comentario:"💬", autorizacion:"📋", cambio_estado:"🔄", material:"🔩", terminado:"✅", entrega:"📦" }[ev.evento_tipo] ?? "📌";
+                    const color = { recepcion:C.accent, asignacion:"#60A5FA", inicio:C.warn, comentario:"#A78BFA", autorizacion:"#F97316", cambio_estado:C.success, material:"#F59E0B", terminado:C.success, entrega:C.purple }[ev.evento_tipo] ?? C.muted;
+                    const label = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", autorizacion:"Autorización", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega" }[ev.evento_tipo] ?? ev.evento_tipo;
+                    const fecha = parseFechaUTC(ev.fecha_evento);
+                    return (
+                      <div key={ev.id} style={{ position:"relative", marginBottom:16 }}>
+                        <div style={{ position:"absolute", left:-22, top:2, width:16, height:16, borderRadius:"50%", background:color+"22", border:`2px solid ${color}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, zIndex:1 }}>{icon}</div>
+                        <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 14px", transition:"background 0.15s" }}>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                            <span style={{ color, fontWeight:600, fontSize:12 }}>{label}</span>
+                            <span style={{ color:C.muted, fontSize:11 }}>{fecha.toLocaleDateString("es-MX")} {fecha.toLocaleTimeString("es-MX", { hour:"2-digit", minute:"2-digit" })}</span>
+                          </div>
+                          {ev.detalle && <div style={{ color:C.textSub, fontSize:13 }}>{ev.detalle}</div>}
+                          {ev.creado_por && <div style={{ color:C.muted, fontSize:11, marginTop:2 }}>Por: {ev.usuarios?.nombre_completo ?? "Sistema"}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
       {imprimiendo && <ImprimirOrden orden={orden} onCerrar={() => setImp(false)} />}
     </div>
   );
@@ -572,8 +569,8 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
   return (
     <div style={{ background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"system-ui,sans-serif" }}>
 
-      {/* Header */}
-      <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"0 28px" }}>
+      {/* Header — Glass effect */}
+      <div style={{ ...glassSurface, background:"rgba(24,28,37,0.85)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", borderBottom:`1px solid ${C.borderLight}`, padding:"0 28px" }}>
         <div style={{ maxWidth:1280, margin:"0 auto", display:"flex", alignItems:"center", justifyContent:"space-between", height:54 }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ width:6, height:26, background:C.accent, borderRadius:3 }} />
@@ -582,16 +579,16 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ color:C.muted, fontSize:12 }}>{usuario?.nombre_completo}</span>
-            <button onClick={() => setExp(true)} style={{ background:"#8B5CF6", color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+            <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setExp(true)} style={{ background:"#8B5CF6", color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700, transition:"all 0.2s" }}>
               📊 Exportar
-            </button>
-            <button onClick={() => setSol(true)} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+            </motion.button>
+            <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setSol(true)} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700, transition:"all 0.2s" }}>
               + Solicitar orden
-            </button>
-            <button onClick={onCapturarManual} style={{ background:C.warn, color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+            </motion.button>
+            <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={onCapturarManual} style={{ background:C.warn, color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700, transition:"all 0.2s" }}>
               📋 Captura manual
-            </button>
-            <button onClick={salir} style={{ background:C.border, color:C.muted, border:"none", borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:12 }}>Salir</button>
+            </motion.button>
+            <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={salir} style={{ background:C.border, color:C.muted, border:"none", borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:12, transition:"all 0.2s" }}>Salir</motion.button>
           </div>
         </div>
       </div>
@@ -599,7 +596,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
       <div style={{ maxWidth:1280, margin:"0 auto", padding:"22px 28px" }}>
 
         {/* KPIs */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:10, marginBottom:20 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:12, marginBottom:20 }}>
           <KPI label="Total órdenes"  value={kpis.total}      sub="Este año"         color={C.text}    />
           <KPI label="Nuevas"         value={kpis.nuevas}     sub="Sin asignar"      color={C.accent}  />
           <KPI label="En proceso"     value={kpis.proceso}    sub="En taller"        color={C.warn}    />
@@ -609,10 +606,10 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
           <KPI label="Sin SETC"       value={kpis.sinSetc}    sub="No dada de alta"  color={C.danger}  />
         </div>
 
-        {/* Tabs */}
-        <div style={{ display:"flex", gap:4, marginBottom:18, background:C.surface, borderRadius:10, padding:4, width:"fit-content", border:`1px solid ${C.border}` }}>
+        {/* Tabs — Pill style */}
+        <div style={{ display:"flex", gap:4, marginBottom:18, background:C.surface, borderRadius:9999, padding:4, width:"fit-content", border:`1px solid ${C.border}` }}>
           {(usuario?.rol === 'superadmin' ? TABS_ADMIN : TABS_BASE).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ background:tab===t?C.accent:"transparent", color:tab===t?"#fff":C.muted, border:"none", borderRadius:8, padding:"7px 20px", cursor:"pointer", fontWeight:600, fontSize:13 }}>{t}</button>
+            <motion.button key={t} whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setTab(t)} style={{ background:tab===t?C.accent:"transparent", color:tab===t?"#fff":C.muted, border:"none", borderRadius:9999, padding:"7px 20px", cursor:"pointer", fontWeight:600, fontSize:13, transition:"all 0.2s" }}>{t}</motion.button>
           ))}
         </div>
 
@@ -621,27 +618,29 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
           <Card style={{ padding:0 }}>
             <div style={{ padding:"14px 18px", borderBottom:`1px solid ${C.border}`, display:"flex", gap:8, flexWrap:"wrap" }}>
               <input placeholder="Folio, pieza, solicitante, área…" value={busqueda} onChange={e => setBusq(e.target.value)}
-                style={{ flex:1, minWidth:200, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
+                style={{ flex:1, minWidth:200, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none", transition:"border-color 0.2s, box-shadow 0.2s" }}
+                onFocus={e => { e.target.style.borderColor=C.accent; e.target.style.boxShadow=`0 0 0 3px ${C.accentGlow}`; }}
+                onBlur={e => { e.target.style.borderColor=C.border; e.target.style.boxShadow="none"; }} />
               {["todos","nueva_orden","en_proceso","terminada","entregadas","cancelada","sin_setc"].map(e => {
                 const c = e==="entregadas"?C.purple:e==="sin_setc"?C.danger:(EST_COLOR[e]||C.accent);
-                return <button key={e} onClick={() => setFE(e)} style={{ background:filtroEst===e?c+"22":"transparent", color:filtroEst===e?c:C.muted, border:`1px solid ${filtroEst===e?c:C.border}`, borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
+                return <motion.button key={e} whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setFE(e)} style={{ background:filtroEst===e?c+"22":"transparent", color:filtroEst===e?c:C.muted, border:`1px solid ${filtroEst===e?c:C.border}`, borderRadius:9999, padding:"7px 14px", cursor:"pointer", fontSize:12, fontWeight:600, transition:"all 0.2s" }}>
                   {{ todos:"Todas",nueva_orden:"Nuevas",en_proceso:"En proceso",terminada:"Terminadas",entregadas:"Entregadas",cancelada:"Canceladas",sin_setc:"⚠ Sin SETC" }[e]}
-                </button>;
+                </motion.button>;
               })}
             </div>
             {loading ? <Spinner /> : (
               <div style={{ overflowX:"auto" }}>
                 <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                   <thead>
-                    <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                    <tr>
                       {["Folio","Fecha","Solicitante","Área","Pieza","S.E.T.C.","Prioridad","Estado","Técnico","Hrs"].map(h => (
-                        <th key={h} style={{ padding:"10px 14px", color:C.muted, fontWeight:600, textAlign:"left", whiteSpace:"nowrap" }}>{h}</th>
+                        <th key={h} style={{ padding:"10px 14px", color:C.muted, fontWeight:600, textAlign:"left", whiteSpace:"nowrap", position:"sticky", top:0, zIndex:1, backdropFilter:"blur(8px)", background:C.surface, borderBottom:`1px solid ${C.border}` }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {filtradas.map((o,i) => (
-                      <tr key={o.no_orden} onClick={() => setOS(o)} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66", cursor:"pointer" }}
+                      <tr key={o.no_orden} onClick={() => setOS(o)} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66", cursor:"pointer", transition:"background 0.15s" }}
                         onMouseEnter={e => e.currentTarget.style.background=C.accent+"11"}
                         onMouseLeave={e => e.currentTarget.style.background=i%2===0?"transparent":C.bg+"66"}>
                         <td style={{ padding:"10px 14px", color:C.accent, fontWeight:700 }}>#{o.no_orden}</td>
@@ -669,7 +668,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
         {/* ── PRIORIDADES */}
         {tab === "Prioridades" && (
           <div style={{ display:"grid", gap:14 }}>
-            {/* Sub-tabs prioridad */}
+            {/* Sub-tabs prioridad — Pill style */}
             <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
               {[
                 { key:"todas", label:"Todas", color:C.text },
@@ -682,12 +681,13 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                 const count = p.key === "todas" ? ordenes.length : ordenes.filter(o => o.prioridad === p.key).length;
                 const active = filtroPrio === p.key;
                 return (
-                  <button key={p.key} onClick={() => setFP(p.key)} style={{
+                  <motion.button key={p.key} whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setFP(p.key)} style={{
                     background: active ? p.color+"22" : "transparent",
                     color: active ? p.color : C.muted,
                     border: `1px solid ${active ? p.color : C.border}`,
-                    borderRadius: 8, padding: "7px 16px", cursor: "pointer",
-                    fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6
+                    borderRadius: 9999, padding: "7px 16px", cursor: "pointer",
+                    fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6,
+                    transition: "all 0.2s"
                   }}>
                     {p.label}
                     <span style={{
@@ -695,7 +695,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                       color: active ? "#fff" : C.muted,
                       borderRadius: 10, padding: "1px 8px", fontSize: 11, fontWeight: 700
                     }}>{count}</span>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
@@ -729,9 +729,9 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                 <div style={{ overflowX:"auto" }}>
                   <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                     <thead>
-                      <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                      <tr>
                         {["Folio","Fecha","Solicitante","Área","Pieza","S.E.T.C.","Prioridad","Estado","Técnico","Hrs"].map(h => (
-                          <th key={h} style={{ padding:"10px 14px", color:C.muted, fontWeight:600, textAlign:"left", whiteSpace:"nowrap" }}>{h}</th>
+                          <th key={h} style={{ padding:"10px 14px", color:C.muted, fontWeight:600, textAlign:"left", whiteSpace:"nowrap", position:"sticky", top:0, zIndex:1, backdropFilter:"blur(8px)", background:C.surface, borderBottom:`1px solid ${C.border}` }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -740,7 +740,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                         .filter(o => filtroPrio === "todas" || o.prioridad === filtroPrio)
                         .sort((a, b) => (a.prioridad || "").localeCompare(b.prioridad || "") || (b.no_orden - a.no_orden))
                         .map((o, i) => (
-                          <tr key={o.no_orden} onClick={() => setOS(o)} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66", cursor:"pointer" }}
+                          <tr key={o.no_orden} onClick={() => setOS(o)} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66", cursor:"pointer", transition:"background 0.15s" }}
                             onMouseEnter={e => e.currentTarget.style.background=C.accent+"11"}
                             onMouseLeave={e => e.currentTarget.style.background=i%2===0?"transparent":C.bg+"66"}>
                             <td style={{ padding:"10px 14px", color:C.accent, fontWeight:700 }}>#{o.no_orden}</td>
