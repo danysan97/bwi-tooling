@@ -254,7 +254,7 @@ export default function PanelTecnicos() {
       d.setMonth(d.getMonth() - i);
       const ini   = new Date(d.getFullYear(), d.getMonth(), 1);
       const fin2  = new Date(d.getFullYear(), d.getMonth()+1, 0, 23, 59, 59);
-      const label = ini.toLocaleString("es-MX", { month:"short", year:"2-digit" });
+      const label = fin2.toLocaleString("es-MX", { day:"numeric", month:"short", year:"numeric" });
       const row   = { mes: label };
       tecs.forEach(t => {
         const hrs = (segs ?? [])
