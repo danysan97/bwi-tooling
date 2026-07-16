@@ -48,10 +48,10 @@ const Row = ({ children, cols=2 }) => (
 );
 const Logo = () => (
   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-    <div style={{ width:5, height:28, background:C.accent, borderRadius:3 }} />
+    <img src="/logo-bwi.png" alt="BWI Group" style={{ height:32, objectFit:"contain" }} />
     <div>
-      <div style={{ fontWeight:800, fontSize:16, color:C.text }}>BWI — TOOLROOM</div>
-      <div style={{ color:C.muted, fontSize:11 }}>Portal de Órdenes de Trabajo</div>
+      <div style={{ fontWeight:800, fontSize:16, color:C.text }}>Portal de Órdenes</div>
+      <div style={{ color:C.muted, fontSize:11 }}>BWI — TOOLROOM</div>
     </div>
   </div>
 );

@@ -66,15 +66,7 @@ function PantallaLogin({ onLogin }) {
       >
         {/* Logo */}
         <div style={{ textAlign:"center", marginBottom:36 }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:12, marginBottom:10 }}>
-            <div style={{
-              width:6, height:34, borderRadius:3,
-              background:`linear-gradient(180deg, ${C.accent}, ${C.purple})`,
-            }} />
-            <span style={{ fontSize:24, fontWeight:800, color:C.text, letterSpacing:-0.5 }}>
-              BWI — TOOLROOM
-            </span>
-          </div>
+          <img src="/logo-bwi.png" alt="BWI Group" style={{ height:56, marginBottom:12, objectFit:"contain" }} />
           <div style={{ color:C.muted, fontSize:13, letterSpacing:0.5 }}>Portal de Órdenes de Trabajo</div>
         </div>
 

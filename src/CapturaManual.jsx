@@ -478,10 +478,9 @@ export default function App({ onVolver }) {
       <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"0 28px" }}>
         <div style={{ maxWidth:780, margin:"0 auto", display:"flex", alignItems:"center",
           justifyContent:"space-between", height:54 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:6, height:26, background:C.warn, borderRadius:3 }} />
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <img src="/logo-bwi.png" alt="BWI Group" style={{ height:32, objectFit:"contain" }} />
             <div>
-              <div style={{ fontWeight:800, fontSize:15 }}>BWI — TOOLROOM</div>
               <div style={{ color:C.muted, fontSize:11 }}>Captura de órdenes manuales</div>
             </div>
           </div>

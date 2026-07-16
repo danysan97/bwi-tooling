@@ -96,9 +96,7 @@ export default function ImprimirOrden({ orden, onCerrar }) {
           {/* Encabezado */}
           <div style={{ display:"flex", alignItems:"center", marginBottom:8 }}>
             {/* Logo BWI */}
-            <div style={{ background:BWI_BLUE, color:"#fff", fontWeight:900, fontSize:18, padding:"8px 16px", letterSpacing:2, marginRight:12, borderRadius:4 }}>
-              BWI
-            </div>
+            <img src="/logo-bwi.png" alt="BWI Group" style={{ height:40, marginRight:12, objectFit:"contain" }} />
             <div style={{ flex:1, textAlign:"center" }}>
               <div style={{ fontSize:15, fontWeight:700, color:BWI_BLUE, textTransform:"uppercase", letterSpacing:1 }}>
                 ORDEN DE TRABAJO PARA TALLER

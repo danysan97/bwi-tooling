@@ -433,3 +433,19 @@ export async function cargarHistorial(orden_id) {
     .order('fecha_evento', { ascending: true })
   return { data: data ?? [], error }
 }
+
+let _logoCache = null
+export async function obtenerLogoBase64() {
+  if (_logoCache) return _logoCache
+  try {
+    const res = await fetch('/logo-bwi.png')
+    const blob = await res.blob()
+    const b64 = await new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result)
+      reader.readAsDataURL(blob)
+    })
+    _logoCache = b64
+    return b64
+  } catch { return null }
+}

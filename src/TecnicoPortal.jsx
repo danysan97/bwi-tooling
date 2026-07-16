@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerUrlPlano, registrarEvento, parseFechaUTC } from "./lib/supabase";
+import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerUrlPlano, registrarEvento, parseFechaUTC, obtenerLogoBase64 } from "./lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import DatePicker from "./DatePicker.jsx";
 import { C, PRIO_COLOR, PRIO_LABEL, EST_COLOR, EST_LABEL, modalScale, fadeIn, slideUp, glassSurface, glowAccent } from "./theme";
@@ -107,10 +107,12 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
   const prioLabel = PRIO_LABEL[o.prioridad] ?? o.prioridad;
   const oDate = o.fecha_solicitud ? parseFechaUTC(o.fecha_solicitud) : null;
 
-  const abrirImpresion = () => {
+  const abrirImpresion = async () => {
+    const logoB64 = await obtenerLogoBase64();
+    const logoTag = logoB64 ? `<img src="${logoB64}" style="height:40px;object-fit:contain;margin-right:12px" alt="BWI Group" />` : `<div style="background:#1B3A6B;color:#fff;font-weight:900;font-size:18px;padding:8px 16px;letter-spacing:2;margin-right:12px;border-radius:4">BWI</div>`;
     const html = `<div style="padding:20px;font-family:Arial,sans-serif;font-size:11px;color:#000">
       <div style="display:flex;align-items:center;margin-bottom:8px">
-        <div style="background:#1B3A6B;color:#fff;font-weight:900;font-size:18px;padding:8px 16px;letter-spacing:2;margin-right:12px;border-radius:4">BWI</div>
+        ${logoTag}
         <div style="flex:1;text-align:center"><div style="font-size:15px;font-weight:700;color:#1B3A6B;text-transform:uppercase;letter-spacing:1">ORDEN DE TRABAJO PARA TALLER</div><div style="font-size:9px;color:#666;margin-top:2">TOOLROOM — TALLER MÁQUINAS Y HERRAMIENTAS</div></div>
         <div style="text-align:right;font-size:9px;color:#666"><div style="font-weight:700;font-size:13px;color:#1B3A6B">No. Orden: #${o.no_orden}</div><div>F-1100.C.03-02</div><div>Rev. 06</div></div>
       </div>
@@ -387,9 +389,8 @@ export default function TecnicoPortal({ usuario, onSalir }) {
       {/* Header */}
       <div style={{ ...glassSurface, borderBottom:`1px solid ${C.border}`, padding:"14px 24px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:100 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:4, height:24, background:`linear-gradient(180deg, ${C.accent}, ${C.purple})`, borderRadius:2 }} />
-          <span style={{ fontSize:18, fontWeight:800 }}>BWI — TOOLROOM</span>
-          <span style={{ color:C.muted, fontSize:12, marginLeft:8 }}>Portal del Técnico</span>
+          <img src="/logo-bwi.png" alt="BWI Group" style={{ height:32, objectFit:"contain" }} />
+          <span style={{ color:C.muted, fontSize:12 }}>Portal del Técnico</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:16 }}>
           <div style={{ textAlign:"right" }}>

@@ -572,9 +572,8 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
       {/* Header — Glass effect */}
       <div style={{ ...glassSurface, background:"rgba(24,28,37,0.85)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", borderBottom:`1px solid ${C.borderLight}`, padding:"0 28px" }}>
         <div style={{ maxWidth:1280, margin:"0 auto", display:"flex", alignItems:"center", justifyContent:"space-between", height:54 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:6, height:26, background:C.accent, borderRadius:3 }} />
-            <span style={{ fontWeight:800, fontSize:15 }}>BWI — TOOLROOM</span>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <img src="/logo-bwi.png" alt="BWI Group" style={{ height:32, objectFit:"contain" }} />
             <span style={{ color:C.muted, fontSize:12 }}>Panel de administración</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
