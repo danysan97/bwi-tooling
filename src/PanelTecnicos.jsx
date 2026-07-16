@@ -64,6 +64,27 @@ function getMesActual() {
   return { inicio, fin };
 }
 
+// ── Conversión semana del año → rango de fechas ──────────────
+function semanaARango(anio, semana) {
+  const enero1 = new Date(anio, 0, 1);
+  const diaSemana = enero1.getDay() || 7;
+  const lunesInicio = new Date(enero1);
+  lunesInicio.setDate(enero1.getDate() - diaSemana + 1 + (semana - 1) * 7);
+  lunesInicio.setHours(0, 0, 0, 0);
+  const viernesFin = new Date(lunesInicio);
+  viernesFin.setDate(lunesInicio.getDate() + 4);
+  viernesFin.setHours(23, 59, 59, 999);
+  return { inicio: lunesInicio, fin: viernesFin };
+}
+
+function getNumeroSemana(fecha) {
+  const d = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+}
+
 // ── Historial de un técnico ──────────────────────────────────
 function HistorialTecnico({ tecnico, onVolver }) {
   const [ordenes, setOrdenes] = useState([]);
@@ -182,6 +203,14 @@ export default function PanelTecnicos() {
   const [periodo, setPeriodo]       = useState("semana");
   const [tecSelec, setTecSelec]     = useState(null);
 
+  // Búsqueda semanal
+  const hoy = new Date();
+  const [busqSemana, setBusqSemana]   = useState(getNumeroSemana(hoy));
+  const [busqAnio, setBusqAnio]       = useState(hoy.getFullYear());
+  const [busqTecId, setBusqTecId]     = useState("");
+  const [busqResult, setBusqResult]   = useState(null);
+  const [busqLoading, setBusqLoad]    = useState(false);
+
   useEffect(() => { cargar(); }, []);
 
   const cargar = async () => {
@@ -261,7 +290,7 @@ export default function PanelTecnicos() {
       const year  = ini.getFullYear();
       const label = `${day} ${month} ${year}`;
       histLabels.push(label);
-      const row   = { mes: i };
+      const row   = { idx: i, label };
       tecs.forEach(t => {
         const hrs = (segs ?? [])
           .filter(s => s.tecnico_id === t.id && s.fecha_inicio)
@@ -274,6 +303,40 @@ export default function PanelTecnicos() {
     setHistorico(hist);
     setHistLabels(histLabels);
     setLoad(false);
+  };
+
+  // ── Buscar semana específica ────────────────────────────────
+  const buscarSemana = async () => {
+    if (!busqTecId) return;
+    setBusqLoad(true);
+    setBusqResult(null);
+
+    const rango = semanaARango(busqAnio, busqSemana);
+    const tecnico = tecnicos.find(t => t.id === busqTecId);
+
+    const { data: segs } = await supabase
+      .from("seguimiento_orden")
+      .select("id, fecha_inicio, fecha_termino, tiempo_real_hrs, material_id, material_otro, comentarios, orden_id, ordenes_trabajo(no_orden, nombre_pieza, estado, prioridad, solicitante_nombre)")
+      .eq("tecnico_id", busqTecId);
+
+    const enSemana = (segs ?? []).filter(s => {
+      const f = s.fecha_inicio ? new Date(s.fecha_inicio) : null;
+      return f && f >= rango.inicio && f <= rango.fin;
+    });
+
+    const hrsTrab = enSemana.reduce((s, x) => s + (Number(x.tiempo_real_hrs) || 0), 0);
+    const hrsDisp = HRS_SEMANA[tecnico?.turno ?? "primero"];
+    const aprov   = hrsDisp > 0 ? Math.round((hrsTrab / hrsDisp) * 100) : 0;
+
+    setBusqResult({
+      horasTrab: parseFloat(hrsTrab.toFixed(1)),
+      horasDisp: hrsDisp,
+      aprov,
+      ordenes: enSemana,
+      total: enSemana.length,
+      terminadas: enSemana.filter(s => s.ordenes_trabajo?.estado === "terminada").length,
+    });
+    setBusqLoad(false);
   };
 
   const colorTec = ["#3B82F6","#22C55E","#F59E0B","#EF4444","#8B5CF6","#06B6D4"];
@@ -415,9 +478,12 @@ export default function PanelTecnicos() {
           <div style={{ color:C.text, fontSize:15, fontWeight:600, marginBottom:16 }}>Horas trabajadas — Últimos 6 meses</div>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={historico}>
-              <XAxis dataKey="mes" type="number" domain={[0, 5]} ticks={[0,1,2,3,4,5]}
-                tickFormatter={v => histLabels[v] ?? ""}
-                tick={{ fill:C.muted, fontSize:12 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="idx" type="number" domain={[0, 5]} ticks={[0,1,2,3,4,5]}
+                tick={({ x, y, payload }) => {
+                  const lbl = histLabels[payload.value] ?? "";
+                  return <text x={x} y={y+16} textAnchor="middle" fill="#6B7280" fontSize={12}>{lbl}</text>;
+                }}
+                axisLine={false} tickLine={false} />
               <YAxis tick={{ fill:C.muted, fontSize:11 }} axisLine={false} tickLine={false} />
               <Tooltip content={<TooltipCustom />} />
               <Legend wrapperStyle={{ color:C.muted, fontSize:12 }} />
@@ -432,6 +498,99 @@ export default function PanelTecnicos() {
         </Card>
 
       </div>
+
+      {/* ── Búsqueda por semana */}
+      <Card style={{ marginTop:16 }}>
+        <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>Búsqueda</div>
+        <div style={{ color:C.text, fontSize:15, fontWeight:600, marginBottom:16 }}>Desempeño por semana</div>
+
+        <div style={{ display:"flex", gap:12, alignItems:"flex-end", flexWrap:"wrap", marginBottom:20 }}>
+          <div style={{ minWidth:140 }}>
+            <label style={{ display:"block", color:C.textSub, fontSize:11, fontWeight:600, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Semana</label>
+            <select value={busqSemana} onChange={e => setBusqSemana(Number(e.target.value))}
+              style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 14px", color:C.text, fontSize:14, outline:"none", cursor:"pointer" }}>
+              {Array.from({ length: 52 }, (_, i) => i + 1).map(n => (
+                <option key={n} value={n}>Semana {n}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ minWidth:100 }}>
+            <label style={{ display:"block", color:C.textSub, fontSize:11, fontWeight:600, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Año</label>
+            <select value={busqAnio} onChange={e => setBusqAnio(Number(e.target.value))}
+              style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 14px", color:C.text, fontSize:14, outline:"none", cursor:"pointer" }}>
+              <option value={hoy.getFullYear()}>{hoy.getFullYear()}</option>
+              <option value={hoy.getFullYear() - 1}>{hoy.getFullYear() - 1}</option>
+              <option value={hoy.getFullYear() - 2}>{hoy.getFullYear() - 2}</option>
+            </select>
+          </div>
+          <div style={{ minWidth:220 }}>
+            <label style={{ display:"block", color:C.textSub, fontSize:11, fontWeight:600, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Técnico</label>
+            <select value={busqTecId} onChange={e => setBusqTecId(e.target.value)}
+              style={{ width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 14px", color:C.text, fontSize:14, outline:"none", cursor:"pointer" }}>
+              <option value="">— Seleccionar técnico —</option>
+              {tecnicos.map(t => <option key={t.id} value={t.id}>{t.nombre_completo} ({t.no_empleado})</option>)}
+            </select>
+          </div>
+          <button onClick={buscarSemana} disabled={!busqTecId || busqLoading}
+            style={{ background: !busqTecId || busqLoading ? C.border : C.accent, color: !busqTecId || busqLoading ? C.muted : "#fff",
+              border:"none", borderRadius:8, padding:"10px 22px", fontWeight:700, fontSize:13, cursor: !busqTecId || busqLoading ? "default" : "pointer", whiteSpace:"nowrap" }}>
+            {busqLoading ? "Buscando…" : "🔍 Buscar"}
+          </button>
+        </div>
+
+        {/* Resultados */}
+        {busqResult && (
+          <div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:1, background:C.border, borderRadius:10, overflow:"hidden", marginBottom:16 }}>
+              {[
+                { label:"Horas trabajadas", value:`${busqResult.horasTrab} hrs`, sub:`de ${busqResult.horasDisp} disponibles`, color:C.accent },
+                { label:"Aprovechamiento", value:`${busqResult.aprov}%`, color: busqResult.aprov >= 80 ? C.success : busqResult.aprov >= 50 ? C.warn : C.danger },
+                { label:"Órdenes", value:busqResult.total, color:C.text },
+                { label:"Terminadas", value:busqResult.terminadas, color:C.success },
+              ].map((k,i) => (
+                <div key={i} style={{ background:C.surface, padding:"14px 18px", textAlign:"center" }}>
+                  <KPI {...k} />
+                </div>
+              ))}
+            </div>
+
+            {/* Tabla de órdenes */}
+            {busqResult.ordenes.length > 0 ? (
+              <div style={{ overflowX:"auto" }}>
+                <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                  <thead>
+                    <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                      {["Folio","Pieza","Solicitante","Prioridad","Estado","Hrs"].map(h => (
+                        <th key={h} style={{ padding:"10px 14px", color:C.muted, fontWeight:600, textAlign:"left", whiteSpace:"nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {busqResult.ordenes.map((s, i) => (
+                      <tr key={s.id} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66" }}>
+                        <td style={{ padding:"10px 14px", color:C.accent, fontWeight:700 }}>#{s.ordenes_trabajo?.no_orden}</td>
+                        <td style={{ padding:"10px 14px", fontWeight:500 }}>{s.ordenes_trabajo?.nombre_pieza}</td>
+                        <td style={{ padding:"10px 14px", color:C.textSub }}>{s.ordenes_trabajo?.solicitante_nombre ?? "—"}</td>
+                        <td style={{ padding:"10px 14px" }}>
+                          <span style={{ fontSize:11, fontWeight:600 }}>{PRIO_LABEL[s.ordenes_trabajo?.prioridad] ?? "—"}</span>
+                        </td>
+                        <td style={{ padding:"10px 14px" }}>
+                          <span style={{ background:(EST_COLOR[s.ordenes_trabajo?.estado] ?? C.muted)+"22", color:EST_COLOR[s.ordenes_trabajo?.estado] ?? C.muted, borderRadius:6, padding:"2px 8px", fontSize:11, fontWeight:600 }}>
+                            {EST_LABEL[s.ordenes_trabajo?.estado] ?? "—"}
+                          </span>
+                        </td>
+                        <td style={{ padding:"10px 14px", color:C.textSub }}>{s.tiempo_real_hrs ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ padding:30, textAlign:"center", color:C.muted }}>Sin órdenes registradas en esa semana.</div>
+            )}
+          </div>
+        )}
+      </Card>
 
       {/* Modal historial */}
       {tecSelec && <HistorialTecnico tecnico={tecSelec} onVolver={() => setTecSelec(null)} />}
