@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   obtenerSesion, cerrarSesion,
   crearOrden, obtenerAreas, obtenerTecnicos,
-  listarUsuarios,
+  listarUsuarios, actualizarEstado, registrarEvento, supabase,
 } from "./lib/supabase";
 
 // ── Paleta ───────────────────────────────────────────────────
@@ -148,9 +148,11 @@ function FormCaptura({ usuario, onExito }) {
     cantidad:        "1",
     descripcion:     "",
     prioridad:       "",
-    // Fecha real de la orden en papel
+    // Fechas
     folio_manual:    "",
     fecha_original:  new Date().toISOString().slice(0,10),
+    fecha_inicio:    "",
+    fecha_termino:   "",
   });
 
   const set = (k, v) => { setForm(f => ({...f, [k]:v})); setErr(e => ({...e, [k]:""})); };
@@ -174,6 +176,8 @@ function FormCaptura({ usuario, onExito }) {
     if (!form.prioridad)            e.prioridad     = "Selecciona una prioridad.";
     if (!form.folio_manual || isNaN(form.folio_manual)) e.folio_manual = "Ingresa el número de folio de la papeleta.";
     if (!form.fecha_original)       e.fecha_original = "Ingresa la fecha de la orden original.";
+    if (form.fecha_termino && !form.fecha_inicio) e.fecha_inicio = "Si hay fecha de término, también debes indicar la fecha de inicio.";
+    if (form.fecha_termino && form.fecha_inicio && form.fecha_termino < form.fecha_inicio) e.fecha_termino = "La fecha de término no puede ser anterior a la de inicio.";
     return e;
   };
 
@@ -205,9 +209,54 @@ function FormCaptura({ usuario, onExito }) {
       folio_manual:     form.folio_manual,
     }, archivo);
 
+    if (error || !data) { setEnv(false); setErr({ _global:"Error al guardar. Intenta de nuevo." }); return; }
+
+    const noOrden = data.no_orden;
+
+    // Determinar estado según las fechas
+    const tieneInicio  = !!form.fecha_inicio;
+    const tieneTermino = !!form.fecha_termino;
+    let estadoFinal = "nueva_orden";
+    if (tieneInicio && tieneTermino)  estadoFinal = "terminada";
+    else if (tieneInicio)             estadoFinal = "en_proceso";
+
+    // Convertir fechas a formato ISO (mediodía UTC para que se muestre correctamente en la zona local)
+    const aISO = (f) => f ? new Date(f + "T12:00:00Z").toISOString() : null;
+
+    // Actualizar estado si no es nueva_orden
+    if (estadoFinal !== "nueva_orden") {
+      await actualizarEstado(noOrden, estadoFinal, usuario.id);
+    }
+
+    // Crear registro de seguimiento con las fechas
+    let tiempoRealHrs = null;
+    if (tieneInicio && tieneTermino) {
+      const dInicio  = new Date(form.fecha_inicio);
+      const dTermino = new Date(form.fecha_termino);
+      tiempoRealHrs = Math.round(((dTermino - dInicio) / (1000 * 60 * 60)) * 10) / 10;
+    }
+
+    const { error: segErr } = await supabase.from("seguimiento_orden").insert({
+      orden_id:        noOrden,
+      fecha_inicio:    aISO(form.fecha_inicio),
+      fecha_termino:   aISO(form.fecha_termino),
+      tiempo_real_hrs: tiempoRealHrs,
+      tecnico_id:      null,
+      actualizado_por: usuario.id,
+    });
+
+    if (segErr) console.error("Error creando seguimiento:", segErr);
+
+    // Registrar eventos en el historial
+    if (tieneInicio) {
+      await registrarEvento(noOrden, "inicio", "Orden capturada con fecha de inicio.", usuario.id);
+    }
+    if (tieneTermino) {
+      await registrarEvento(noOrden, "terminado", "Orden capturada con fecha de término.", usuario.id);
+    }
+
     setEnv(false);
-    if (error) { setErr({ _global:"Error al guardar. Intenta de nuevo." }); return; }
-    onExito(data.no_orden);
+    onExito(noOrden);
   };
 
   const onFile = e => {
@@ -239,7 +288,7 @@ function FormCaptura({ usuario, onExito }) {
       )}
 
       {/* ── Folio y fecha */}
-      <Section title="Folio y fecha de la orden" subtitle="Ingresa el folio de la papeleta física y la fecha real.">
+      <Section title="Folio y fechas de la orden" subtitle="Ingresa el folio y las fechas reales de la papeleta. El estado se asigna automáticamente según las fechas.">
         <Row>
           <div>
             <Label required>Número de folio (papeleta)</Label>
@@ -253,6 +302,37 @@ function FormCaptura({ usuario, onExito }) {
             <ErrMsg msg={errores.fecha_original} />
           </div>
         </Row>
+
+        <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:14, marginTop:6, marginBottom:14 }}>
+          <div style={{ color:C.textSub, fontSize:12, fontWeight:600, marginBottom:10 }}>Fechas de seguimiento (opcional)</div>
+          <Row>
+            <div>
+              <Label>Fecha de inicio</Label>
+              <Input type="date" value={form.fecha_inicio} error={!!errores.fecha_inicio} onChange={e => set("fecha_inicio", e.target.value)} />
+              <ErrMsg msg={errores.fecha_inicio} />
+              <div style={{ color:C.muted, fontSize:11, marginTop:4 }}>Si se indica, la orden pasará a "En proceso".</div>
+            </div>
+            <div>
+              <Label>Fecha de término</Label>
+              <Input type="date" value={form.fecha_termino} error={!!errores.fecha_termino} onChange={e => set("fecha_termino", e.target.value)} />
+              <ErrMsg msg={errores.fecha_termino} />
+              <div style={{ color:C.muted, fontSize:11, marginTop:4 }}>Requiere fecha de inicio. La orden quedará como "Terminada".</div>
+            </div>
+          </Row>
+
+          {/* Status preview */}
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"8px 14px",
+            background: C.bg, borderRadius:8, border:`1px solid ${C.border}` }}>
+            <span style={{ color:C.muted, fontSize:12 }}>Estado resultante:</span>
+            {form.fecha_termino && form.fecha_inicio ? (
+              <span style={{ background:C.success+"22", color:C.success, fontWeight:700, fontSize:12, padding:"3px 10px", borderRadius:6 }}>Terminada</span>
+            ) : form.fecha_inicio ? (
+              <span style={{ background:C.warn+"22", color:C.warn, fontWeight:700, fontSize:12, padding:"3px 10px", borderRadius:6 }}>En proceso</span>
+            ) : (
+              <span style={{ background:C.accent+"22", color:C.accent, fontWeight:700, fontSize:12, padding:"3px 10px", borderRadius:6 }}>Nueva orden</span>
+            )}
+          </div>
+        </div>
       </Section>
 
       {/* ── Solicitante */}
