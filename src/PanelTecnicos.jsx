@@ -177,6 +177,7 @@ export default function PanelTecnicos() {
   const [tecnicos, setTecnicos]     = useState([]);
   const [metricas, setMetricas]     = useState({});
   const [historico, setHistorico]   = useState([]);
+  const [histLabels, setHistLabels] = useState([]);
   const [loading, setLoad]          = useState(true);
   const [periodo, setPeriodo]       = useState("semana");
   const [tecSelec, setTecSelec]     = useState(null);
@@ -249,13 +250,18 @@ export default function PanelTecnicos() {
 
     // Histórico mensual últimos 6 meses para gráfica de línea
     const hist = [];
+    const histLabels = [];
     for (let i = 5; i >= 0; i--) {
       const d     = new Date();
       d.setMonth(d.getMonth() - i);
       const ini   = new Date(d.getFullYear(), d.getMonth(), 1);
       const fin2  = new Date(d.getFullYear(), d.getMonth()+1, 0, 23, 59, 59);
-      const label = `${fin2.toLocaleString("es-MX", { month:"short" }).replace('.','')} '${String(fin2.getFullYear()).slice(2)}`;
-      const row   = { mes: label };
+      const day   = fin2.getDate();
+      const month = ini.toLocaleString("es-MX", { month:"short" }).replace('.','');
+      const year  = ini.getFullYear();
+      const label = `${day} ${month} ${year}`;
+      histLabels.push(label);
+      const row   = { mes: i };
       tecs.forEach(t => {
         const hrs = (segs ?? [])
           .filter(s => s.tecnico_id === t.id && s.fecha_inicio)
@@ -266,6 +272,7 @@ export default function PanelTecnicos() {
       hist.push(row);
     }
     setHistorico(hist);
+    setHistLabels(histLabels);
     setLoad(false);
   };
 
@@ -408,7 +415,9 @@ export default function PanelTecnicos() {
           <div style={{ color:C.text, fontSize:15, fontWeight:600, marginBottom:16 }}>Horas trabajadas — Últimos 6 meses</div>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={historico}>
-              <XAxis dataKey="mes" type="category" tick={{ fill:C.muted, fontSize:12 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="mes" type="number" domain={[0, 5]} ticks={[0,1,2,3,4,5]}
+                tickFormatter={v => histLabels[v] ?? ""}
+                tick={{ fill:C.muted, fontSize:12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill:C.muted, fontSize:11 }} axisLine={false} tickLine={false} />
               <Tooltip content={<TooltipCustom />} />
               <Legend wrapperStyle={{ color:C.muted, fontSize:12 }} />
