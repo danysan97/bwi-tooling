@@ -217,6 +217,7 @@ export default function PanelTecnicos() {
 
   const cargar = async () => {
     setLoad(true);
+    try {
 
     // Técnicos
     const { data: tecs } = await supabase
@@ -311,6 +312,8 @@ export default function PanelTecnicos() {
     }
     setHistorico(hist);
     setHistLabels(histLabels);
+
+    } catch (err) { console.error("Error cargando métricas:", err); }
     setLoad(false);
   };
 
