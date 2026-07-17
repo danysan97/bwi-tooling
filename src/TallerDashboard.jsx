@@ -97,6 +97,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const [confirmandoEntrega, setConfEntrega] = useState(false);
   const [nombreAut, setNombreAut] = useState("");
   const [puestoAut, setPuestoAut] = useState("");
+  const [folioQueja, setFolioQueja] = useState("");
   const [planoUrl, setPlanoUrl] = useState(null);
   const planoRef = useRef();
   const [subiendoPlano, setSubPlano] = useState(false);
@@ -111,6 +112,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setConfEntrega(false);
     setNombreAut("");
     setPuestoAut("");
+    setFolioQueja("");
     setPlanoUrl(null);
     if (orden.archivo_url) {
       obtenerUrlPlano(orden.archivo_url).then(({ url }) => setPlanoUrl(url));
@@ -305,6 +307,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                     <div><div style={{ color:C.muted, fontSize:11 }}>Autorizado por (Nombre)</div><div style={{ color:C.text, fontWeight:600 }}>{orden.nombre_autoriza ?? orden.autorizado_por_nombre ?? "—"}</div></div>
                     <div><div style={{ color:C.muted, fontSize:11 }}>Puesto</div><div style={{ color:C.text, fontWeight:600 }}>{orden.puesto_autoriza ?? orden.autorizado_por_puesto ?? "—"}</div></div>
                   </div>
+                  {orden.folio_queja && <div style={{ marginTop:6, fontSize:13 }}><span style={{ color:C.muted, fontSize:11 }}>Folio queja: </span><span style={{ color:C.text, fontWeight:700 }}>{orden.folio_queja}</span></div>}
                 </div>
               )}
               {orden.autorizada === false && (
@@ -314,6 +317,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                     <div><div style={{ color:C.muted, fontSize:11 }}>Rechazado por (Nombre)</div><div style={{ color:C.text, fontWeight:600 }}>{orden.nombre_autoriza ?? orden.autorizado_por_nombre ?? "—"}</div></div>
                     <div><div style={{ color:C.muted, fontSize:11 }}>Puesto</div><div style={{ color:C.text, fontWeight:600 }}>{orden.puesto_autoriza ?? orden.autorizado_por_puesto ?? "—"}</div></div>
                   </div>
+                  {orden.folio_queja && <div style={{ marginTop:4, fontSize:13 }}><span style={{ color:C.muted, fontSize:11 }}>Folio queja: </span><span style={{ color:C.text, fontWeight:700 }}>{orden.folio_queja}</span></div>}
                   {orden.motivo_rechazo && <div style={{ color:C.muted, fontSize:12, marginTop:8, borderTop:`1px solid ${C.border}`, paddingTop:8 }}>Motivo: {orden.motivo_rechazo}</div>}
                 </div>
               )}
@@ -493,6 +497,12 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                           <Input placeholder="Ej. Gerente de Mantenimiento" value={puestoAut} onChange={e => setPuestoAut(e.target.value)} />
                         </div>
                       </div>
+                      {orden.prioridad === "2_queja_cliente" && (
+                        <div style={{ marginBottom:10 }}>
+                          <Label>Folio de queja de cliente *</Label>
+                          <Input placeholder="Ej. QC-2026-0012" value={folioQueja} onChange={e => setFolioQueja(e.target.value)} />
+                        </div>
+                      )}
                       <div style={{ marginBottom:8 }}>
                         <Label>Comentario *</Label>
                         <Textarea rows={2} placeholder="Escribe un comentario para autorizar o rechazar…" value={coment} onChange={e => setComent(e.target.value)} />
@@ -502,9 +512,10 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                           if (!coment.trim()) { setMsg("Escribe un comentario antes de autorizar."); return; }
                           if (!nombreAut.trim()) { setMsg("Indica el nombre de quien autoriza."); return; }
                           if (!puestoAut.trim()) { setMsg("Indica el puesto de quien autoriza."); return; }
+                          if (orden.prioridad === "2_queja_cliente" && !folioQueja.trim()) { setMsg("Indica el folio de la queja de cliente."); return; }
                           setG(true);
-                          await supabase.from("ordenes_trabajo").update({ autorizada: true, autorizado_por: usuario.id, nombre_autoriza: nombreAut.trim(), puesto_autoriza: puestoAut.trim() }).eq("no_orden", orden.no_orden);
-                          const detalle = `Autorizado por ${nombreAut.trim()} — ${puestoAut.trim()}. ${coment.trim()}`;
+                          await supabase.from("ordenes_trabajo").update({ autorizada: true, autorizado_por: usuario.id, nombre_autoriza: nombreAut.trim(), puesto_autoriza: puestoAut.trim(), folio_queja: orden.prioridad === "2_queja_cliente" ? folioQueja.trim() : null }).eq("no_orden", orden.no_orden);
+                          const detalle = `Autorizado por ${nombreAut.trim()} — ${puestoAut.trim()}. ${orden.prioridad === "2_queja_cliente" ? `Folio queja: ${folioQueja.trim()}. ` : ""}${coment.trim()}`;
                           await registrarEvento(orden.no_orden, 'autorizacion', detalle, usuario.id);
                           setG(false); setMsg("Orden autorizada."); onActualizado();
                         }} disabled={guardando} style={{ flex:1, background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"10px 0", fontWeight:700, cursor:"pointer", fontSize:13, transition:"all 0.2s" }}>
@@ -515,8 +526,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                           if (!nombreAut.trim()) { setMsg("Indica el nombre de quien rechaza."); return; }
                           if (!puestoAut.trim()) { setMsg("Indica el puesto de quien rechaza."); return; }
                           setG(true);
-                          await supabase.from("ordenes_trabajo").update({ autorizada: false, autorizado_por: usuario.id, motivo_rechazo: coment, nombre_autoriza: nombreAut.trim(), puesto_autoriza: puestoAut.trim() }).eq("no_orden", orden.no_orden);
-                          await registrarEvento(orden.no_orden, 'autorizacion', `Rechazado por ${nombreAut.trim()} — ${puestoAut.trim()}. Motivo: ${coment.trim()}`, usuario.id);
+                          await supabase.from("ordenes_trabajo").update({ autorizada: false, autorizado_por: usuario.id, motivo_rechazo: coment, nombre_autoriza: nombreAut.trim(), puesto_autoriza: puestoAut.trim(), folio_queja: orden.prioridad === "2_queja_cliente" ? folioQueja.trim() : null }).eq("no_orden", orden.no_orden);
+                          await registrarEvento(orden.no_orden, 'autorizacion', `Rechazado por ${nombreAut.trim()} — ${puestoAut.trim()}. ${orden.prioridad === "2_queja_cliente" ? `Folio queja: ${folioQueja.trim()}. ` : ""}Motivo: ${coment.trim()}`, usuario.id);
                           setG(false); setMsg("Orden rechazada."); onActualizado();
                         }} disabled={guardando} style={{ flex:1, background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"10px 0", fontWeight:700, cursor:"pointer", fontSize:13, transition:"all 0.2s" }}>
                           ❌ Rechazar
