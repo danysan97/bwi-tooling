@@ -351,7 +351,12 @@ export default function PanelTecnicos() {
   return (
     <>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-        <div style={{ color:C.text, fontWeight:700, fontSize:18 }}>Panel de Técnicos</div>
+        <div>
+          <div style={{ color:C.text, fontWeight:700, fontSize:18 }}>Panel de Técnicos</div>
+          <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>
+            Semana {getNumeroSemana(new Date())} · {new Date().toLocaleDateString("es-MX", { month:"long", year:"numeric" })}
+          </div>
+        </div>
         <div style={{ display:"flex", gap:4, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:4 }}>
           {["semana","mes","total"].map(p => (
             <button key={p} onClick={() => setPeriodo(p)} style={{ background:periodo===p?C.accent:"transparent", color:periodo===p?"#fff":C.muted, border:"none", borderRadius:8, padding:"6px 16px", cursor:"pointer", fontWeight:600, fontSize:12, textTransform:"capitalize" }}>

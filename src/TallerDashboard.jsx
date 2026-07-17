@@ -576,6 +576,9 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
             <img src="/logo-bwi.png" alt="BWI Group" style={{ height:32, objectFit:"contain" }} />
             <span style={{ color:C.muted, fontSize:12 }}>Panel de administración — TOOLROOM</span>
           </div>
+          <div style={{ color:C.text, fontSize:12, fontWeight:600, letterSpacing:0.5 }}>
+            {new Date().toLocaleDateString("es-MX", { weekday:"long", year:"numeric", month:"long", day:"numeric" })}
+          </div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ color:C.muted, fontSize:12 }}>{usuario?.nombre_completo}</span>
             <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setExp(true)} style={{ background:"#8B5CF6", color:"#fff", border:"none", borderRadius:8, padding:"6px 14px", cursor:"pointer", fontSize:12, fontWeight:700, transition:"all 0.2s" }}>
