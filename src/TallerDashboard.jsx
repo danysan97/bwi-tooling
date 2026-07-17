@@ -405,7 +405,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                             <button onClick={() => handleEliminarRegistroAdmin(r, t.tecnico_id)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:12, padding:2 }} title="Eliminar">✕</button>
                           </div>
                         ))}
-                        <div style={{ display:"grid", gridTemplateColumns:"90px 60px 1fr auto", gap:6, alignItems:"end", marginTop:6 }}>
+                        <div style={{ display:"grid", gridTemplateColumns:"115px 60px 1fr auto", gap:6, alignItems:"end", marginTop:6 }}>
                           <div>
                             <input type="date" value={getRhForm(t.tecnico_id).fecha} onChange={e => setRhField(t.tecnico_id, "fecha", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
                           </div>
