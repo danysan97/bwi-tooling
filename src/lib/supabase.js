@@ -218,7 +218,7 @@ export async function obtenerMisOrdenes(solicitante_id) {
 export async function obtenerOrdenesTecnico(tecnico_id) {
   const { data, error } = await supabase
     .from('seguimiento_orden')
-    .select('id, fecha_inicio, fecha_termino, tiempo_real_hrs, material_id, material_otro, comentarios, orden_id, ordenes_trabajo(*)')
+    .select('id, fecha_inicio, fecha_termino, tiempo_real_hrs, material_id, material_otro, comentarios, orden_id, ordenes_trabajo(*, solicitante:usuarios!solicitante_id(nombre_completo, no_empleado, departamento, area_codigo))')
     .eq('tecnico_id', tecnico_id)
     .order('fecha_registro', { ascending: false })
   return { data: data ?? [], error }

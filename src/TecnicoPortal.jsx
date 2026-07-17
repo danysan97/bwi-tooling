@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerUrlPlano, registrarEvento, parseFechaUTC, obtenerLogoBase64, agregarRegistroHoras, eliminarRegistroHoras, obtenerRegistrosHoras } from "./lib/supabase";
+import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerAreas, obtenerUrlPlano, registrarEvento, parseFechaUTC, obtenerLogoBase64, agregarRegistroHoras, eliminarRegistroHoras, obtenerRegistrosHoras } from "./lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import DatePicker from "./DatePicker.jsx";
 import { C, PRIO_COLOR, PRIO_LABEL, EST_COLOR, EST_LABEL, modalScale, fadeIn, slideUp, glassSurface, glowAccent } from "./theme";
@@ -400,12 +400,29 @@ export default function TecnicoPortal({ usuario, onSalir }) {
 
   const cargar = async () => {
     setLoad(true);
-    const [ordRes, matRes, perfRes] = await Promise.all([
+    const [ordRes, matRes, perfRes, areasRaw] = await Promise.all([
       obtenerOrdenesTecnico(usuario.id),
       obtenerMateriales(),
       obtenerPerfilTecnico(usuario.id),
+      obtenerAreas(),
     ]);
-    setOrdenes(ordRes.data ?? []);
+    const areasMap = Object.fromEntries((areasRaw ?? []).map(a => [a.codigo, a.nombre]));
+    setOrdenes((ordRes.data ?? []).map(s => {
+      const ot = s.ordenes_trabajo ?? {};
+      const sol = ot.solicitante;
+      const ac = sol?.area_codigo ?? ot.area_codigo;
+      return {
+        ...s,
+        ordenes_trabajo: {
+          ...ot,
+          solicitante_nombre: sol?.nombre_completo ?? ot.solicitante_nombre,
+          solicitante_empleado: sol?.no_empleado ?? ot.solicitante_empleado,
+          area_nombre: areasMap[ac] ?? ot.area_nombre ?? null,
+          area_codigo: ac,
+          departamento: sol?.departamento ?? ot.departamento,
+        }
+      };
+    }));
     setMateriales(matRes ?? []);
     setPerfil(perfRes.data);
     // Cargar todos los registros de horas del técnico
