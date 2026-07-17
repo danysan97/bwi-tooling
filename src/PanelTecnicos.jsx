@@ -263,18 +263,26 @@ export default function PanelTecnicos() {
       const mesInicio = mes.inicio.toISOString().slice(0,10);
       const mesFin = mes.fin.toISOString().slice(0,10);
 
-      const hrsTrabSem = misRegs.filter(r => r.fecha >= semInicio && r.fecha <= semFin).reduce((s, r) => s + (Number(r.horas) || 0), 0);
-      const hrsTrabMes = misRegs.filter(r => r.fecha >= mesInicio && r.fecha <= mesFin).reduce((s, r) => s + (Number(r.horas) || 0), 0);
+      const regsSemana = misRegs.filter(r => r.fecha >= semInicio && r.fecha <= semFin);
+      const regsMes = misRegs.filter(r => r.fecha >= mesInicio && r.fecha <= mesFin);
+
+      const hrsTrabSem = regsSemana.reduce((s, r) => s + (Number(r.horas) || 0), 0);
+      const hrsTrabMes = regsMes.reduce((s, r) => s + (Number(r.horas) || 0), 0);
       const hrsTotal   = misRegs.reduce((s, r) => s + (Number(r.horas) || 0), 0);
 
-      const enSemana = misSegs.filter(s => {
+      const enSemanaFecha = misSegs.filter(s => {
         const f = s.fecha_inicio;
         return f && f.slice(0,10) >= semInicio && f.slice(0,10) <= semFin;
       });
-      const enMes = misSegs.filter(s => {
+      const enSemanaConReg = misSegs.filter(s => regsSemana.some(r => r.orden_id === s.orden_id));
+      const enSemana = [...new Map([...enSemanaFecha, ...enSemanaConReg].map(s => [s.orden_id, s])).values()];
+
+      const enMesFecha = misSegs.filter(s => {
         const f = s.fecha_inicio;
         return f && f.slice(0,10) >= mesInicio && f.slice(0,10) <= mesFin;
       });
+      const enMesConReg = misSegs.filter(s => regsMes.some(r => r.orden_id === s.orden_id));
+      const enMes = [...new Map([...enMesFecha, ...enMesConReg].map(s => [s.orden_id, s])).values()];
 
       met[t.id] = {
         hrsDia,
