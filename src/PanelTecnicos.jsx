@@ -231,10 +231,15 @@ export default function PanelTecnicos() {
     // Seguimiento de cada técnico
     const { data: segs } = await supabase
       .from("seguimiento_orden")
-      .select("id, tecnico_id, tiempo_real_hrs, fecha_inicio, fecha_termino, orden_id, ordenes_trabajo(estado, prioridad, nombre_pieza, no_orden, solicitante_nombre)")
+      .select("tecnico_id, tiempo_real_hrs, fecha_inicio, fecha_termino, orden_id, ordenes_trabajo(estado, prioridad, nombre_pieza)")
       .in("tecnico_id", tecs.map(t => t.id));
 
     setAllSegs(segs ?? []);
+
+    console.log("PANEL_TEC DEBUG → tecs:", tecs.length, "segs:", (segs ?? []).length);
+    if ((segs ?? []).length > 0) {
+      console.log("PANEL_TEC DEBUG → sample:", segs[0]);
+    }
 
     // Calcular métricas por técnico
     const sem  = getSemanaActual();
@@ -326,6 +331,12 @@ export default function PanelTecnicos() {
       const f = s.fecha_inicio.slice(0, 10);
       return f >= rangoInicio && f <= rangoFin;
     });
+
+    console.log("BUSQUEDA DEBUG → allSegs:", allSegs.length, "rango:", rangoInicio, "→", rangoFin, "enSemana:", enSemana.length);
+    if (allSegs.length > 0) {
+      console.log("BUSQUEDA DEBUG → sample fecha_inicio:", allSegs[0].fecha_inicio, "sliced:", allSegs[0].fecha_inicio?.slice(0,10));
+      console.log("BUSQUEDA DEBUG → sample tecnico_id:", allSegs[0].tecnico_id, "busqTecId:", busqTecId, "match:", allSegs[0].tecnico_id === busqTecId);
+    }
 
     const hrsTrab = enSemana.reduce((s, x) => s + (Number(x.tiempo_real_hrs) || 0), 0);
     const hrsDisp = HRS_SEMANA[tecnico?.turno ?? "primero"];
@@ -563,17 +574,15 @@ export default function PanelTecnicos() {
                 <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                   <thead>
                     <tr style={{ borderBottom:`1px solid ${C.border}` }}>
-                      {["Folio","Pieza","Solicitante","Prioridad","Estado","Hrs"].map(h => (
+                      {["Pieza","Prioridad","Estado","Hrs"].map(h => (
                         <th key={h} style={{ padding:"10px 14px", color:C.muted, fontWeight:600, textAlign:"left", whiteSpace:"nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {busqResult.ordenes.map((s, i) => (
-                      <tr key={s.id} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66" }}>
-                        <td style={{ padding:"10px 14px", color:C.accent, fontWeight:700 }}>#{s.ordenes_trabajo?.no_orden}</td>
-                        <td style={{ padding:"10px 14px", fontWeight:500 }}>{s.ordenes_trabajo?.nombre_pieza}</td>
-                        <td style={{ padding:"10px 14px", color:C.textSub }}>{s.ordenes_trabajo?.solicitante_nombre ?? "—"}</td>
+                      <tr key={i} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66" }}>
+                        <td style={{ padding:"10px 14px", fontWeight:500 }}>{s.ordenes_trabajo?.nombre_pieza ?? "—"}</td>
                         <td style={{ padding:"10px 14px" }}>
                           <span style={{ fontSize:11, fontWeight:600 }}>{PRIO_LABEL[s.ordenes_trabajo?.prioridad] ?? "—"}</span>
                         </td>
