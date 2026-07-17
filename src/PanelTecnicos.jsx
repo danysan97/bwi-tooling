@@ -290,7 +290,7 @@ export default function PanelTecnicos() {
       const year  = ini.getFullYear();
       const label = `${day} ${month} ${year}`;
       histLabels.push(label);
-      const row   = { idx: i, label };
+      const row   = { idx: 5 - i, label };
       tecs.forEach(t => {
         const hrs = (segs ?? [])
           .filter(s => s.tecnico_id === t.id && s.fecha_inicio)
