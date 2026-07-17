@@ -398,7 +398,7 @@ export async function eliminarRegistroHoras(registroId, orden_id, tecnico_id) {
 export async function obtenerRegistrosHoras(orden_id) {
   const { data, error } = await supabase
     .from('registro_horas')
-    .select('id, fecha, horas, comentario, tecnico_id, creado_en, usuarios(nombre_completo)')
+    .select('id, fecha, horas, comentario, tecnico_id, creado_en')
     .eq('orden_id', orden_id)
     .order('fecha', { ascending: true })
   return { data: data ?? [], error }
