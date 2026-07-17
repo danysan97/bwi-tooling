@@ -319,9 +319,13 @@ export default function PanelTecnicos() {
       .select("id, fecha_inicio, fecha_termino, tiempo_real_hrs, material_id, material_otro, comentarios, orden_id, ordenes_trabajo(no_orden, nombre_pieza, estado, prioridad, solicitante_nombre)")
       .eq("tecnico_id", busqTecId);
 
+    const aFecha = (str) => str ? str.slice(0, 10) : null;
+    const rangoInicio = aFecha(rango.inicio.toISOString());
+    const rangoFin    = aFecha(rango.fin.toISOString());
+
     const enSemana = (segs ?? []).filter(s => {
-      const f = s.fecha_inicio ? new Date(s.fecha_inicio) : null;
-      return f && f >= rango.inicio && f <= rango.fin;
+      const f = aFecha(s.fecha_inicio);
+      return f && f >= rangoInicio && f <= rangoFin;
     });
 
     const hrsTrab = enSemana.reduce((s, x) => s + (Number(x.tiempo_real_hrs) || 0), 0);
