@@ -358,6 +358,21 @@ export async function obtenerUrlPlano(archivo_url) {
   return { url: data?.signedUrl ?? null, error }
 }
 
+export async function actualizarPlano(orden_id, archivo) {
+  const ext = archivo.name.split('.').pop()
+  const ruta = `ordenes/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+  const { error: errStorage } = await supabase.storage.from('planos').upload(ruta, archivo)
+  if (errStorage) return { error: 'No se pudo subir el archivo.' }
+  const { data: urlData } = supabase.storage.from('planos').getPublicUrl(ruta)
+  const archivo_url = urlData?.publicUrl ?? null
+  const { error: errUpdate } = await supabase
+    .from('ordenes_trabajo')
+    .update({ archivo_url, archivo_nombre: archivo.name })
+    .eq('no_orden', orden_id)
+  if (errUpdate) return { error: 'Archivo subido pero no se pudo guardar.' }
+  return { error: null, archivo_url, archivo_nombre: archivo.name }
+}
+
 // ============================================================
 //  GRÁFICAS
 // ============================================================

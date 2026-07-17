@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import ImprimirOrden from "./ImprimirOrden.jsx";
@@ -9,7 +9,7 @@ import FormOrdenAdmin from "./FormOrdenAdmin.jsx";
 import {
   supabase,
   obtenerSesion, cerrarSesion,
-  obtenerOrdenes, actualizarEstado, guardarSeguimiento, cargarSeguimiento, obtenerUrlPlano,
+  obtenerOrdenes, actualizarEstado, guardarSeguimiento, cargarSeguimiento, obtenerUrlPlano, actualizarPlano,
   datosGraficaMes, datosGraficaTecnicos, datosGraficaPrioridades,
   obtenerMateriales, obtenerTecnicos, obtenerAreas,
   cargarHistorial, agregarComentarioHistorial, registrarEvento, parseFechaUTC,
@@ -92,6 +92,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const [nombreAut, setNombreAut] = useState("");
   const [puestoAut, setPuestoAut] = useState("");
   const [planoUrl, setPlanoUrl] = useState(null);
+  const planoRef = useRef();
+  const [subiendoPlano, setSubPlano] = useState(false);
 
   useEffect(() => {
     if (!orden) return;
@@ -126,6 +128,23 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     });
     cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []));
   }, [orden]);
+
+  const onSubirPlano = async (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo || !orden) return;
+    setSubPlano(true);
+    const { error, archivo_url, archivo_nombre } = await actualizarPlano(orden.no_orden, archivo);
+    if (!error) {
+      onActualizado({ ...orden, archivo_url, archivo_nombre });
+      const { url } = await obtenerUrlPlano(archivo_url);
+      setPlanoUrl(url);
+      await registrarEvento(orden.no_orden, 'comentario', `Plano adjuntado: ${archivo_nombre}`, usuario.id);
+      const { data } = await cargarHistorial(orden.no_orden);
+      setHistorial(data ?? []);
+    }
+    setSubPlano(false);
+    e.target.value = "";
+  };
 
   if (!orden) return null;
 
@@ -257,9 +276,15 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 <div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>Descripción</div>
                 <div style={{ color:C.text, fontSize:14 }}>{orden.descripcion}</div>
               </div>
-              {planoUrl && (
+              {planoUrl ? (
                 <div style={{ gridColumn:"1/-1", marginTop:4 }}>
-                  <div style={{ color:C.muted, fontSize:11, marginBottom:6 }}>Plano / Archivo adjunto</div>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                    <div style={{ color:C.muted, fontSize:11 }}>Plano / Archivo adjunto</div>
+                    <label style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                      {subiendoPlano ? "Subiendo…" : "🔄 Actualizar plano"}
+                      <input ref={planoRef} type="file" accept=".pdf,.dwg,.dxf,.doc,.docx,.png,.jpg" style={{ display:"none" }} onChange={onSubirPlano} disabled={subiendoPlano} />
+                    </label>
+                  </div>
                   {orden.archivo_nombre?.match(/\.(pdf)$/i) ? (
                     <iframe src={planoUrl} style={{ width:"100%", height:400, border:`1px solid ${C.border}`, borderRadius:8 }} title="Plano" />
                   ) : (
@@ -267,6 +292,14 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                       <img src={planoUrl} alt="Plano" style={{ maxWidth:"100%", maxHeight:400, borderRadius:8, border:`1px solid ${C.border}`, cursor:"pointer" }} />
                     </a>
                   )}
+                </div>
+              ) : (
+                <div style={{ gridColumn:"1/-1", marginTop:4 }}>
+                  <div style={{ color:C.muted, fontSize:11, marginBottom:6 }}>Plano / Archivo adjunto</div>
+                  <label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:20, border:`1px dashed ${C.border}`, borderRadius:8, cursor:"pointer", color:C.muted, fontSize:12, transition:"all 0.2s" }}>
+                    📎 {subiendoPlano ? "Subiendo…" : "Adjuntar plano o documento"}
+                    <input ref={planoRef} type="file" accept=".pdf,.dwg,.dxf,.doc,.docx,.png,.jpg" style={{ display:"none" }} onChange={onSubirPlano} disabled={subiendoPlano} />
+                  </label>
                 </div>
               )}
             </div>
@@ -433,9 +466,24 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                       }} disabled={guardando} style={{ background:C.success, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✓</motion.button>
                       <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setConfEntrega(false)} disabled={guardando} style={{ background:C.danger, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:700, fontSize:13 }}>✕</motion.button>
                     </div>
-                  )}
-                </div>
               )}
+
+              {/* Comentario rápido */}
+              <div style={{ gridColumn:"1/-1", marginTop:4, borderTop:`1px solid ${C.border}`, paddingTop:12 }}>
+                <Label>Agregar comentario</Label>
+                <div style={{ display:"flex", gap:8 }}>
+                  <input value={nuevoComentario} onChange={e => setNuevoComent(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && nuevoComentario.trim() && agregarCom()}
+                    placeholder="Escribe un comentario…" style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
+                  <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={agregarCom}
+                    disabled={!nuevoComentario.trim() || guardando}
+                    style={{ background:nuevoComentario.trim() ? C.accent : C.border, color:nuevoComentario.trim() ? "#fff" : C.muted, border:"none", borderRadius:8, padding:"8px 16px", fontWeight:600, fontSize:12, cursor:nuevoComentario.trim() ? "pointer" : "default" }}>
+                    {guardando ? "…" : "Enviar"}
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+          )}
               {orden.estado === "terminada" && orden.entregada && (
                 <div style={{ padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10, color:C.purple, fontWeight:600, fontSize:14 }}>✅ Trabajo entregado</div>
               )}

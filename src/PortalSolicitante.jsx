@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { crearOrden, obtenerMisOrdenes, obtenerAreas, supabase, cargarHistorial, parseFechaUTC } from "./lib/supabase";
+import { crearOrden, obtenerMisOrdenes, obtenerAreas, supabase, cargarHistorial, parseFechaUTC, actualizarPlano, obtenerUrlPlano, agregarComentarioHistorial, registrarEvento } from "./lib/supabase";
 import ImprimirOrden from "./ImprimirOrden.jsx";
 
 const C = {
@@ -62,6 +62,11 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
   const [ordenSel, setOS]     = useState(null);
   const [imprimiendo, setImp] = useState(false);
   const [historial, setHistorial] = useState([]);
+  const [planoUrl, setPlanoUrl]   = useState(null);
+  const planoRef  = useRef();
+  const [nuevoCom, setNuevoCom]   = useState("");
+  const [subiendoPlano, setSubPlano] = useState(false);
+  const [subiendoCom, setSubCom]  = useState(false);
 
   const cargar = () => {
     setLoad(true);
@@ -71,9 +76,45 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
   useEffect(() => { cargar(); }, [usuario.id]);
 
   useEffect(() => {
-    if (ordenSel) cargarHistorial(ordenSel.no_orden).then(({ data }) => setHistorial(data ?? []));
-    else setHistorial([]);
+    if (ordenSel) {
+      cargarHistorial(ordenSel.no_orden).then(({ data }) => setHistorial(data ?? []));
+      setPlanoUrl(null);
+      if (ordenSel.archivo_url) {
+        obtenerUrlPlano(ordenSel.archivo_url).then(({ url }) => setPlanoUrl(url));
+      }
+    } else {
+      setHistorial([]);
+      setPlanoUrl(null);
+    }
+    setNuevoCom("");
   }, [ordenSel]);
+
+  const onSubirPlano = async (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo || !ordenSel) return;
+    setSubPlano(true);
+    const { error, archivo_url, archivo_nombre } = await actualizarPlano(ordenSel.no_orden, archivo);
+    if (!error) {
+      setOS({ ...ordenSel, archivo_url, archivo_nombre });
+      const { url } = await obtenerUrlPlano(archivo_url);
+      setPlanoUrl(url);
+      await registrarEvento(ordenSel.no_orden, 'comentario', `Plano adjuntado: ${archivo_nombre}`, usuario.id);
+      const { data } = await cargarHistorial(ordenSel.no_orden);
+      setHistorial(data ?? []);
+    }
+    setSubPlano(false);
+    e.target.value = "";
+  };
+
+  const onAgregarComentario = async () => {
+    if (!nuevoCom.trim() || !ordenSel) return;
+    setSubCom(true);
+    await agregarComentarioHistorial(ordenSel.no_orden, nuevoCom.trim(), usuario.id);
+    const { data } = await cargarHistorial(ordenSel.no_orden);
+    setHistorial(data ?? []);
+    setNuevoCom("");
+    setSubCom(false);
+  };
 
   return (
     <div style={{ minHeight:"100vh", background:C.bg, padding:24 }}>
@@ -149,6 +190,39 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
               <div style={{ gridColumn:"1/-1" }}>
                 <div style={{ color:C.muted, fontSize:11, marginBottom:2 }}>Descripción</div>
                 <div style={{ color:C.text, fontSize:14 }}>{ordenSel.descripcion}</div>
+              </div>
+            </div>
+
+            {/* Plano adjunto */}
+            <div style={{ marginTop:16, borderTop:`1px solid ${C.border}`, paddingTop:16 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1 }}>Plano / Archivo adjunto</div>
+                <label style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"4px 12px", fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                  {subiendoPlano ? "Subiendo…" : ordenSel.archivo_url ? "🔄 Actualizar plano" : "📎 Adjuntar plano"}
+                  <input ref={planoRef} type="file" accept=".pdf,.dwg,.dxf,.doc,.docx,.png,.jpg" style={{ display:"none" }} onChange={onSubirPlano} disabled={subiendoPlano} />
+                </label>
+              </div>
+              {planoUrl ? (
+                ordenSel.archivo_nombre?.match(/\.(pdf)$/i) ? (
+                  <iframe src={planoUrl} style={{ width:"100%", height:300, border:`1px solid ${C.border}`, borderRadius:8 }} title="Plano" />
+                ) : (
+                  <a href={planoUrl} target="_blank" rel="noopener noreferrer"><img src={planoUrl} alt="Plano" style={{ maxWidth:"100%", maxHeight:300, border:`1px solid ${C.border}`, borderRadius:8 }} /></a>
+                )
+              ) : (
+                <div style={{ color:C.muted, fontSize:12, padding:20, textAlign:"center", border:`1px dashed ${C.border}`, borderRadius:8 }}>Sin plano adjunto</div>
+              )}
+            </div>
+
+            {/* Comentario rápido */}
+            <div style={{ marginTop:16, borderTop:`1px solid ${C.border}`, paddingTop:16 }}>
+              <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Agregar comentario</div>
+              <div style={{ display:"flex", gap:8 }}>
+                <input value={nuevoCom} onChange={e => setNuevoCom(e.target.value)} onKeyDown={e => e.key === "Enter" && onAgregarComentario()}
+                  placeholder="Escribe un comentario…" style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
+                <button onClick={onAgregarComentario} disabled={!nuevoCom.trim() || subiendoCom}
+                  style={{ background:nuevoCom.trim() ? C.accent : C.border, color:nuevoCom.trim() ? "#fff" : C.muted, border:"none", borderRadius:8, padding:"8px 16px", fontWeight:600, fontSize:12, cursor:nuevoCom.trim() ? "pointer" : "default" }}>
+                  {subiendoCom ? "…" : "Enviar"}
+                </button>
               </div>
             </div>
 
