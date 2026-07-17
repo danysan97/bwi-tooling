@@ -202,6 +202,7 @@ export default function PanelTecnicos() {
   const [loading, setLoad]          = useState(true);
   const [periodo, setPeriodo]       = useState("semana");
   const [tecSelec, setTecSelec]     = useState(null);
+  const [allSegs, setAllSegs]       = useState([]);
 
   // Búsqueda semanal
   const hoy = new Date();
@@ -230,8 +231,10 @@ export default function PanelTecnicos() {
     // Seguimiento de cada técnico
     const { data: segs } = await supabase
       .from("seguimiento_orden")
-      .select("tecnico_id, tiempo_real_hrs, fecha_inicio, fecha_termino, orden_id, ordenes_trabajo(estado, prioridad, nombre_pieza)")
+      .select("id, tecnico_id, tiempo_real_hrs, fecha_inicio, fecha_termino, orden_id, ordenes_trabajo(estado, prioridad, nombre_pieza, no_orden, solicitante_nombre)")
       .in("tecnico_id", tecs.map(t => t.id));
+
+    setAllSegs(segs ?? []);
 
     // Calcular métricas por técnico
     const sem  = getSemanaActual();
@@ -314,18 +317,11 @@ export default function PanelTecnicos() {
     const rango = semanaARango(busqAnio, busqSemana);
     const tecnico = tecnicos.find(t => t.id === busqTecId);
 
-    const { data: segs } = await supabase
-      .from("seguimiento_orden")
-      .select("id, fecha_inicio, fecha_termino, tiempo_real_hrs, material_id, material_otro, comentarios, orden_id, ordenes_trabajo(no_orden, nombre_pieza, estado, prioridad, solicitante_nombre)")
-      .eq("tecnico_id", busqTecId);
-
-    const aFecha = (str) => str ? str.slice(0, 10) : null;
-    const rangoInicio = aFecha(rango.inicio.toISOString());
-    const rangoFin    = aFecha(rango.fin.toISOString());
-
-    const enSemana = (segs ?? []).filter(s => {
-      const f = aFecha(s.fecha_inicio);
-      return f && f >= rangoInicio && f <= rangoFin;
+    const enSemana = allSegs.filter(s => {
+      if (s.tecnico_id !== busqTecId) return false;
+      if (!s.fecha_inicio) return false;
+      const f = new Date(s.fecha_inicio);
+      return f >= rango.inicio && f <= rango.fin;
     });
 
     const hrsTrab = enSemana.reduce((s, x) => s + (Number(x.tiempo_real_hrs) || 0), 0);
