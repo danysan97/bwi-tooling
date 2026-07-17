@@ -203,6 +203,7 @@ export default function PanelTecnicos() {
   const [periodo, setPeriodo]       = useState("semana");
   const [tecSelec, setTecSelec]     = useState(null);
   const [allSegs, setAllSegs]       = useState([]);
+  const [allRegs, setAllRegs]      = useState([]);
 
   // Búsqueda semanal
   const hoy = new Date();
@@ -236,29 +237,33 @@ export default function PanelTecnicos() {
 
     setAllSegs(segs ?? []);
 
-    // Calcular métricas por técnico
+    // Registros de horas por sesión (fuente de verdad para horas trabajadas)
+    const { data: regs } = await supabase
+      .from("registro_horas")
+      .select("tecnico_id, fecha, horas")
+      .in("tecnico_id", tecs.map(t => t.id));
+    const allRegs = regs ?? [];
+    setAllRegs(allRegs);
+
+    // Calcular métricas por técnico usando registro_horas
     const sem  = getSemanaActual();
     const mes  = getMesActual();
     const met  = {};
 
     tecs.forEach(t => {
-      const misSegs = (segs ?? []).filter(s => s.tecnico_id === t.id);
+      const misRegs = allRegs.filter(r => r.tecnico_id === t.id);
       const hrsDia  = HRS_DIA[t.turno ?? "primero"];
       const hrsSem  = HRS_SEMANA[t.turno ?? "primero"];
       const hrsMes  = HRS_MES[t.turno ?? "primero"];
 
-      const enSemana = misSegs.filter(s => {
-        const f = s.fecha_inicio ? new Date(s.fecha_inicio) : null;
-        return f && f >= sem.inicio && f <= sem.fin;
-      });
-      const enMes = misSegs.filter(s => {
-        const f = s.fecha_inicio ? new Date(s.fecha_inicio) : null;
-        return f && f >= mes.inicio && f <= mes.fin;
-      });
+      const semInicio = sem.inicio.toISOString().slice(0,10);
+      const semFin = sem.fin.toISOString().slice(0,10);
+      const mesInicio = mes.inicio.toISOString().slice(0,10);
+      const mesFin = mes.fin.toISOString().slice(0,10);
 
-      const hrsTrabSem = enSemana.reduce((s, x) => s + (Number(x.tiempo_real_hrs) || 0), 0);
-      const hrsTrabMes = enMes.reduce((s, x) => s + (Number(x.tiempo_real_hrs) || 0), 0);
-      const hrsTotal   = misSegs.reduce((s, x) => s + (Number(x.tiempo_real_hrs) || 0), 0);
+      const hrsTrabSem = misRegs.filter(r => r.fecha >= semInicio && r.fecha <= semFin).reduce((s, r) => s + (Number(r.horas) || 0), 0);
+      const hrsTrabMes = misRegs.filter(r => r.fecha >= mesInicio && r.fecha <= mesFin).reduce((s, r) => s + (Number(r.horas) || 0), 0);
+      const hrsTotal   = misRegs.reduce((s, r) => s + (Number(r.horas) || 0), 0);
 
       met[t.id] = {
         hrsDia,
@@ -295,10 +300,11 @@ export default function PanelTecnicos() {
       histLabels.push(label);
       const row   = { idx: 5 - i, label };
       tecs.forEach(t => {
-        const hrs = (segs ?? [])
-          .filter(s => s.tecnico_id === t.id && s.fecha_inicio)
-          .filter(s => { const f = new Date(s.fecha_inicio); return f >= ini && f <= fin2; })
-          .reduce((sum, s) => sum + (Number(s.tiempo_real_hrs) || 0), 0);
+        const iniStr = ini.toISOString().slice(0,10);
+        const finStr = fin2.toISOString().slice(0,10);
+        const hrs = allRegs
+          .filter(r => r.tecnico_id === t.id && r.fecha >= iniStr && r.fecha <= finStr)
+          .reduce((sum, r) => sum + (Number(r.horas) || 0), 0);
         row[t.nombre_completo.split(" ")[0]] = parseFloat(hrs.toFixed(1));
       });
       hist.push(row);
@@ -327,7 +333,12 @@ export default function PanelTecnicos() {
       return f >= rangoInicio && f <= rangoFin;
     });
 
-    const hrsTrab = enSemana.reduce((s, x) => s + (Number(x.tiempo_real_hrs) || 0), 0);
+    const regsEnSemana = allRegs.filter(r => {
+      if (r.tecnico_id !== busqTecId) return false;
+      return r.fecha >= rangoInicio && r.fecha <= rangoFin;
+    });
+
+    const hrsTrab = regsEnSemana.reduce((s, r) => s + (Number(r.horas) || 0), 0);
     const hrsDisp = HRS_SEMANA[tecnico?.turno ?? "primero"];
     const aprov   = hrsDisp > 0 ? Math.round((hrsTrab / hrsDisp) * 100) : 0;
 

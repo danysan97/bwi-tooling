@@ -295,7 +295,7 @@ export async function guardarSeguimiento(no_orden, tecnicos, comentarios, materi
       orden_id:        no_orden,
       fecha_inicio:    tech.fecha_inicio    || null,
       fecha_termino:   tech.fecha_termino   || null,
-      tiempo_real_hrs: tech.tiempo_real_hrs ? Number(tech.tiempo_real_hrs) : null,
+      ...(tech.tiempo_real_hrs != null && tech.tiempo_real_hrs !== "" && { tiempo_real_hrs: Number(tech.tiempo_real_hrs) }),
       tecnico_id:      tech.tecnico_id      || null,
       material_id:     material_id          || null,
       material_otro:   material_otro        || null,
@@ -371,6 +371,51 @@ export async function actualizarPlano(orden_id, archivo) {
     .eq('no_orden', orden_id)
   if (errUpdate) return { error: 'Archivo subido pero no se pudo guardar.' }
   return { error: null, archivo_url, archivo_nombre: archivo.name }
+}
+
+// ============================================================
+//  REGISTRO DE HORAS POR SESIÓN
+// ============================================================
+
+export async function agregarRegistroHoras(orden_id, tecnico_id, fecha, horas, comentario, creado_por) {
+  const { data, error } = await supabase
+    .from('registro_horas')
+    .insert({ orden_id, tecnico_id, fecha, horas, comentario: comentario || null, creado_por })
+    .select('id')
+    .single()
+  if (error) return { data: null, error }
+  await actualizarTotalHoras(orden_id, tecnico_id)
+  return { data, error: null }
+}
+
+export async function eliminarRegistroHoras(registroId, orden_id, tecnico_id) {
+  const { error } = await supabase.from('registro_horas').delete().eq('id', registroId)
+  if (error) return { error }
+  await actualizarTotalHoras(orden_id, tecnico_id)
+  return { error: null }
+}
+
+export async function obtenerRegistrosHoras(orden_id) {
+  const { data, error } = await supabase
+    .from('registro_horas')
+    .select('id, fecha, horas, comentario, tecnico_id, creado_en, usuarios(nombre_completo)')
+    .eq('orden_id', orden_id)
+    .order('fecha', { ascending: true })
+  return { data: data ?? [], error }
+}
+
+export async function actualizarTotalHoras(orden_id, tecnico_id) {
+  const { data } = await supabase
+    .from('registro_horas')
+    .select('horas')
+    .eq('orden_id', orden_id)
+    .eq('tecnico_id', tecnico_id)
+  const total = (data ?? []).reduce((sum, r) => sum + Number(r.horas), 0)
+  await supabase
+    .from('seguimiento_orden')
+    .update({ tiempo_real_hrs: total || null })
+    .eq('orden_id', orden_id)
+    .eq('tecnico_id', tecnico_id)
 }
 
 // ============================================================

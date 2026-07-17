@@ -13,6 +13,7 @@ import {
   datosGraficaMes, datosGraficaTecnicos, datosGraficaPrioridades,
   obtenerMateriales, obtenerTecnicos, obtenerAreas,
   cargarHistorial, agregarComentarioHistorial, registrarEvento, parseFechaUTC,
+  agregarRegistroHoras, eliminarRegistroHoras, obtenerRegistrosHoras,
 } from "./lib/supabase";
 import DatePicker from "./DatePicker.jsx";
 import { C, PRIO_COLOR, PRIO_LABEL, EST_COLOR, EST_LABEL, modalScale, fadeIn, slideUp, glassSurface, glowAccent } from "./theme";
@@ -59,6 +60,11 @@ const Textarea = ({ ...props }) => (
     onBlur={e => { e.target.style.borderColor=C.border; e.target.style.boxShadow="none"; }} />
 );
 const Spinner = () => <div style={{ textAlign:"center", padding:60, color:C.muted }}>Cargando…</div>;
+const inputStyle = {
+  width:"100%", boxSizing:"border-box", background:C.bg, border:`1px solid ${C.border}`,
+  borderRadius:8, padding:"9px 12px", color:C.text, fontSize:13, outline:"none",
+  transition:"border-color 0.2s, box-shadow 0.2s",
+};
 const sinSETC = (o) => {
   const v = (o.setc_numero ?? "").toString().trim();
   return !v || !/^\d{8}$/.test(v);
@@ -94,6 +100,11 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const [planoUrl, setPlanoUrl] = useState(null);
   const planoRef = useRef();
   const [subiendoPlano, setSubPlano] = useState(false);
+  const [registrosMap, setRegistrosMap] = useState({}); // { tecnico_id: [...] }
+  const [nuevaFecha, setNuevaFecha] = useState(new Date().toISOString().slice(0,10));
+  const [nuevasHoras, setNuevasHoras] = useState("");
+  const [nuevoComentRH, setNuevoComentRH] = useState("");
+  const [agregandoRH, setAgregandoRH] = useState(false);
 
   useEffect(() => {
     if (!orden) return;
@@ -127,7 +138,38 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
       }
     });
     cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []));
+    cargarRegistrosAll();
   }, [orden]);
+
+  const cargarRegistrosAll = async () => {
+    if (!orden) return;
+    const { data } = await obtenerRegistrosHoras(orden.no_orden);
+    const grouped = {};
+    (data ?? []).forEach(r => {
+      if (!grouped[r.tecnico_id]) grouped[r.tecnico_id] = [];
+      grouped[r.tecnico_id].push(r);
+    });
+    setRegistrosMap(grouped);
+  };
+
+  const handleAgregarHorasAdmin = async (tecnico_id) => {
+    if (!nuevaFecha || !nuevasHoras || Number(nuevasHoras) <= 0) return;
+    setAgregandoRH(true);
+    await agregarRegistroHoras(orden.no_orden, tecnico_id, nuevaFecha, Number(nuevasHoras), nuevoComentRH || null, usuario.id);
+    await registrarEvento(orden.no_orden, 'horas', `Registró ${nuevasHoras}h el ${nuevaFecha}${nuevoComentRH ? ": " + nuevoComentRH : ""}`, usuario.id);
+    setNuevasHoras(""); setNuevoComentRH("");
+    await cargarRegistrosAll();
+    setAgregandoRH(false);
+    onActualizado();
+  };
+
+  const handleEliminarRegistroAdmin = async (reg, tecnico_id) => {
+    if (!window.confirm(`¿Eliminar registro de ${reg.horas}h del ${reg.fecha}?`)) return;
+    await eliminarRegistroHoras(reg.id, orden.no_orden, tecnico_id);
+    await registrarEvento(orden.no_orden, 'horas', `Eliminó registro de ${reg.horas}h del ${reg.fecha}`, usuario.id);
+    await cargarRegistrosAll();
+    onActualizado();
+  };
 
   const onSubirPlano = async (e) => {
     const archivo = e.target.files?.[0];
@@ -162,8 +204,6 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     const tecValidos = tecnicosSeg.filter(t => t.tecnico_id);
     if (!tecValidos.length) { setMsg("Asigna al menos un técnico."); return; }
     if (!materialId && !materialOtro) { setMsg("Selecciona un material."); return; }
-    const sinHoras = tecValidos.filter(t => t.fecha_termino && !t.tiempo_real_hrs);
-    if (sinHoras.length) { setMsg("Pon las horas reales a los técnicos que tienen fecha de término antes de guardar."); return; }
     setG(true);
     const { error } = await guardarSeguimiento(orden.no_orden, tecValidos, comentarios, materialId, materialOtro, usuario.id);
     if (error) { setG(false); setMsg("Error al guardar."); return; }
@@ -198,7 +238,10 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setG(false);
   };
 
-  const horasTotal = tecnicosSeg.reduce((s, t) => s + (Number(t.tiempo_real_hrs) || 0), 0);
+  const horasTotal = tecnicosSeg.reduce((s, t) => {
+    const regs = registrosMap[t.tecnico_id] ?? [];
+    return s + regs.reduce((rs, r) => rs + Number(r.horas), 0);
+  }, 0);
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }} onClick={onClose}>
@@ -331,10 +374,6 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                           {tecnicos.map(tec => <option key={tec.id} value={tec.id}>{tec.nombre_completo}</option>)}
                         </Select>
                       </div>
-                      <div>
-                        <Label>Horas reales</Label>
-                        <Input type="number" min="0" step="0.5" placeholder="0.0" value={t.tiempo_real_hrs} onChange={e => actualizarTec(idx, "tiempo_real_hrs", e.target.value)} />
-                      </div>
                       <div><Label>Fecha inicio</Label><DatePicker value={t.fecha_inicio} onChange={v => actualizarTec(idx, "fecha_inicio", v)} /></div>
                       <div>
                         <Label>Fecha término</Label>
@@ -347,6 +386,39 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                         )}
                       </div>
                     </div>
+
+                    {/* Registros de horas por sesión */}
+                    {t.tecnico_id && (
+                      <div style={{ marginTop:10, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:10 }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                          <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>REGISTRO DE HORAS</span>
+                          <span style={{ color:C.accent, fontWeight:700, fontSize:13 }}>
+                            {(registrosMap[t.tecnico_id] ?? []).reduce((s, r) => s + Number(r.horas), 0).toFixed(1)}h
+                          </span>
+                        </div>
+                        {(registrosMap[t.tecnico_id] ?? []).map(r => (
+                          <div key={r.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 8px", background:C.surface, borderRadius:6, border:`1px solid ${C.border}`, marginBottom:4 }}>
+                            <span style={{ color:C.textSub, fontSize:11, minWidth:80 }}>{new Date(r.fecha + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short"})}</span>
+                            <span style={{ color:C.accent, fontWeight:700, fontSize:12 }}>{r.horas}h</span>
+                            {r.comentario && <span style={{ color:C.muted, fontSize:10, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.comentario}</span>}
+                            <button onClick={() => handleEliminarRegistroAdmin(r, t.tecnico_id)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:12, padding:2 }} title="Eliminar">✕</button>
+                          </div>
+                        ))}
+                        <div style={{ display:"grid", gridTemplateColumns:"90px 60px 1fr auto", gap:6, alignItems:"end", marginTop:6 }}>
+                          <div>
+                            <input type="date" value={nuevaFecha} onChange={e => setNuevaFecha(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
+                          </div>
+                          <div>
+                            <input type="number" step="0.5" min="0.5" placeholder="0" value={nuevasHoras} onChange={e => setNuevasHoras(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
+                          </div>
+                          <div>
+                            <input placeholder="Nota…" value={nuevoComentRH} onChange={e => setNuevoComentRH(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} onKeyDown={e => { if (e.key === "Enter" && !agregandoRH) handleAgregarHorasAdmin(t.tecnico_id); }} />
+                          </div>
+                          <motion.button whileHover={!agregandoRH ? { scale:1.05 } : {}} whileTap={!agregandoRH ? { scale:0.95 } : {}} onClick={() => handleAgregarHorasAdmin(t.tecnico_id)} disabled={agregandoRH} style={{ background:agregandoRH?C.border:C.accent, color:agregandoRH?C.muted:"#fff", border:"none", borderRadius:6, width:28, height:28, cursor:agregandoRH?"default":"pointer", fontSize:16, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>+</motion.button>
+                        </div>
+                        {(registrosMap[t.tecnico_id] ?? []).length === 0 && <div style={{ color:C.muted, fontSize:10, textAlign:"center", marginTop:4 }}>Sin registros</div>}
+                      </div>
+                    )}
                   </div>
                 ))}
                 <div style={{ color:C.textSub, fontSize:12, marginTop:4 }}>Total horas: <strong style={{ color:C.text }}>{horasTotal.toFixed(1)} hrs</strong></div>
@@ -510,9 +582,9 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 <div style={{ position:"relative", paddingLeft:28 }}>
                   <div style={{ position:"absolute", left:10, top:0, bottom:0, width:2, background:C.border }} />
                   {historial.map((ev, i) => {
-                    const icon = { recepcion:"📥", asignacion:"👤", inicio:"🔧", comentario:"💬", autorizacion:"📋", cambio_estado:"🔄", material:"🔩", terminado:"✅", entrega:"📦" }[ev.evento_tipo] ?? "📌";
-                    const color = { recepcion:C.accent, asignacion:"#60A5FA", inicio:C.warn, comentario:"#A78BFA", autorizacion:"#F97316", cambio_estado:C.success, material:"#F59E0B", terminado:C.success, entrega:C.purple }[ev.evento_tipo] ?? C.muted;
-                    const label = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", autorizacion:"Autorización", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega" }[ev.evento_tipo] ?? ev.evento_tipo;
+                    const icon = { recepcion:"📥", asignacion:"👤", inicio:"🔧", comentario:"💬", autorizacion:"📋", cambio_estado:"🔄", material:"🔩", terminado:"✅", entrega:"📦", horas:"⏱" }[ev.evento_tipo] ?? "📌";
+                    const color = { recepcion:C.accent, asignacion:"#60A5FA", inicio:C.warn, comentario:"#A78BFA", autorizacion:"#F97316", cambio_estado:C.success, material:"#F59E0B", terminado:C.success, entrega:C.purple, horas:"#06B6D4" }[ev.evento_tipo] ?? C.muted;
+                    const label = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", autorizacion:"Autorización", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega", horas:"Registro de horas" }[ev.evento_tipo] ?? ev.evento_tipo;
                     const fecha = parseFechaUTC(ev.fecha_evento);
                     return (
                       <div key={ev.id} style={{ position:"relative", marginBottom:16 }}>

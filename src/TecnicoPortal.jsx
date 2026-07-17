@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerUrlPlano, registrarEvento, parseFechaUTC, obtenerLogoBase64 } from "./lib/supabase";
+import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerUrlPlano, registrarEvento, parseFechaUTC, obtenerLogoBase64, agregarRegistroHoras, eliminarRegistroHoras, obtenerRegistrosHoras } from "./lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import DatePicker from "./DatePicker.jsx";
 import { C, PRIO_COLOR, PRIO_LABEL, EST_COLOR, EST_LABEL, modalScale, fadeIn, slideUp, glassSurface, glowAccent } from "./theme";
@@ -67,13 +67,44 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
   const [guardando, setG] = useState(false);
   const [msg, setMsg] = useState("");
   const [planoUrl, setPlanoUrl] = useState(null);
+  const [registros, setRegistros] = useState([]);
+  const [nuevaFecha, setNuevaFecha] = useState(new Date().toISOString().slice(0,10));
+  const [nuevasHoras, setNuevasHoras] = useState("");
+  const [nuevoComent, setNuevoComent] = useState("");
+  const [agregando, setAgregando] = useState(false);
 
   useEffect(() => {
     cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []));
+    obtenerRegistrosHoras(orden.no_orden).then(({ data }) => setRegistros(data ?? []));
     if (orden.archivo_url) {
       obtenerUrlPlano(orden.archivo_url).then(({ url }) => setPlanoUrl(url));
     }
   }, [orden.no_orden]);
+
+  const cargarRegistros = () => obtenerRegistrosHoras(orden.no_orden).then(({ data }) => setRegistros(data ?? []));
+
+  const handleAgregarHoras = async () => {
+    if (!nuevaFecha || !nuevasHoras || Number(nuevasHoras) <= 0) { setMsg("Fecha y horas son obligatorias."); return; }
+    setAgregando(true); setMsg("");
+    const { error } = await agregarRegistroHoras(orden.no_orden, usuario.id, nuevaFecha, Number(nuevasHoras), nuevoComent || null, usuario.id);
+    if (error) { setMsg("Error: " + error.message); setAgregando(false); return; }
+    await registrarEvento(orden.no_orden, 'horas', `Registró ${nuevasHoras}h el ${nuevaFecha}${nuevoComent ? ": " + nuevoComent : ""}`, usuario.id);
+    setNuevasHoras(""); setNuevoComent("");
+    await cargarRegistros();
+    setMsg("Registro de horas guardado.");
+    setAgregando(false);
+    onGuardado();
+  };
+
+  const handleEliminarRegistro = async (reg) => {
+    if (!window.confirm(`¿Eliminar registro de ${reg.horas}h del ${reg.fecha}?`)) return;
+    await eliminarRegistroHoras(reg.id, orden.no_orden, usuario.id);
+    await registrarEvento(orden.no_orden, 'horas', `Eliminó registro de ${reg.horas}h del ${reg.fecha}`, usuario.id);
+    await cargarRegistros();
+    onGuardado();
+  };
+
+  const horasTotal = registros.reduce((s, r) => s + Number(r.horas), 0);
 
   const guardar = async () => {
     if (!fechaInicio) { setMsg("La fecha de inicio es obligatoria."); return; }
@@ -81,7 +112,6 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
     await supabase.from("seguimiento_orden").update({
       fecha_inicio:  fechaInicio || null,
       fecha_termino: fechaTermino || null,
-      tiempo_real_hrs: horas ? Number(horas) : null,
       material_id:   materialId || null,
       material_otro: materialOtro || null,
       comentarios:   comentarios || null,
@@ -245,11 +275,50 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
                   )}
                 </div>
               </div>
-              <div>
-                <Label>Horas reales trabajadas</Label>
-                <input type="number" step="0.5" min="0" placeholder="Ej. 8.5" value={horas} onChange={e => setHoras(e.target.value)}
-                  style={inputStyle} {...focusRing} />
+
+              {/* ── Registro de horas por sesión ── */}
+              <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:10, padding:"14px 16px" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                  <Label>Registro de horas</Label>
+                  <span style={{ color:C.accent, fontWeight:700, fontSize:15 }}>{horasTotal.toFixed(1)}h</span>
+                </div>
+
+                {/* Lista de registros existentes */}
+                {registros.length > 0 && (
+                  <div style={{ display:"grid", gap:6, marginBottom:12 }}>
+                    {registros.map(r => (
+                      <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"7px 10px", background:C.surface, borderRadius:8, border:`1px solid ${C.border}` }}>
+                        <span style={{ color:C.textSub, fontSize:12, minWidth:90 }}>{new Date(r.fecha + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})}</span>
+                        <span style={{ color:C.accent, fontWeight:700, fontSize:13, minWidth:40 }}>{r.horas}h</span>
+                        {r.comentario && <span style={{ color:C.muted, fontSize:11, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.comentario}</span>}
+                        {r.usuarios?.nombre_completo && <span style={{ color:C.muted, fontSize:10, marginLeft:"auto" }}>{r.usuarios.nombre_completo}</span>}
+                        <button onClick={() => handleEliminarRegistro(r)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:14, padding:2 }} title="Eliminar">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Formulario nuevo registro */}
+                <div style={{ display:"grid", gridTemplateColumns:"110px 70px 1fr auto", gap:8, alignItems:"end" }}>
+                  <div>
+                    <div style={{ color:C.muted, fontSize:10, marginBottom:3 }}>Fecha</div>
+                    <input type="date" value={nuevaFecha} onChange={e => setNuevaFecha(e.target.value)} style={{ ...inputStyle, fontSize:12, padding:"7px 8px" }} />
+                  </div>
+                  <div>
+                    <div style={{ color:C.muted, fontSize:10, marginBottom:3 }}>Horas</div>
+                    <input type="number" step="0.5" min="0.5" placeholder="0" value={nuevasHoras} onChange={e => setNuevasHoras(e.target.value)} style={{ ...inputStyle, fontSize:12, padding:"7px 8px" }} />
+                  </div>
+                  <div>
+                    <div style={{ color:C.muted, fontSize:10, marginBottom:3 }}>Nota (opc.)</div>
+                    <input placeholder="Detalle breve…" value={nuevoComent} onChange={e => setNuevoComent(e.target.value)} style={{ ...inputStyle, fontSize:12, padding:"7px 8px" }} onKeyDown={e => { if (e.key === "Enter" && !agregando) handleAgregarHoras(); }} />
+                  </div>
+                  <motion.button whileHover={!agregando ? { scale:1.05 } : {}} whileTap={!agregando ? { scale:0.95 } : {}} onClick={handleAgregarHoras} disabled={agregando} style={{ background:agregando?C.border:C.accent, color:agregando?C.muted:"#fff", border:"none", borderRadius:8, width:36, height:36, cursor:agregando?"default":"pointer", fontSize:20, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.2s" }}>
+                    +
+                  </motion.button>
+                </div>
+                {registros.length === 0 && <div style={{ color:C.muted, fontSize:11, textAlign:"center", marginTop:8 }}>Sin registros aún. Usa "+" para agregar horas trabajadas.</div>}
               </div>
+
               <div>
                 <Label>Material utilizado</Label>
                 <select value={materialId} onChange={e => setMatId(e.target.value)}
@@ -282,9 +351,9 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
               {historial.length === 0 && <div style={{ color:C.muted, textAlign:"center", padding:30 }}>Sin eventos registrados.</div>}
               {historial.map(ev => {
                 const fecha = ev.fecha_evento ? parseFechaUTC(ev.fecha_evento) : null;
-                const labels = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", autorizacion:"Autorización", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega" };
-                const colors = { recepcion:C.accent, asignacion:C.purple, inicio:C.warn, comentario:C.muted, autorizacion:C.success, cambio_estado:"#F97316", material:"#06B6D4", terminado:C.success, entrega:C.danger };
-                const icon = { recepcion:"📥", asignacion:"👤", inicio:"▶️", comentario:"💬", autorizacion:"✅", cambio_estado:"🔄", material:"🔧", terminado:"🏁", entrega:"📦" };
+                const labels = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", autorizacion:"Autorización", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega", horas:"Registro de horas" };
+                const colors = { recepcion:C.accent, asignacion:C.purple, inicio:C.warn, comentario:C.muted, autorizacion:C.success, cambio_estado:"#F97316", material:"#06B6D4", terminado:C.success, entrega:C.danger, horas:"#06B6D4" };
+                const icon = { recepcion:"📥", asignacion:"👤", inicio:"▶️", comentario:"💬", autorizacion:"✅", cambio_estado:"🔄", material:"🔧", terminado:"🏁", entrega:"📦", horas:"⏱" };
                 return (
                   <div key={ev.id} style={{ display:"flex", gap:12, padding:"10px 14px", background:C.bg, borderRadius:8, border:`1px solid ${C.border}` }}>
                     <div style={{ fontSize:18, width:28, textAlign:"center" }}>{icon[ev.evento_tipo] ?? "📌"}</div>
@@ -325,6 +394,7 @@ export default function TecnicoPortal({ usuario, onSalir }) {
   const [materiales, setMateriales] = useState([]);
   const [perfil, setPerfil] = useState(null);
   const [pantalla, setPantalla] = useState("ordenes");
+  const [allRegistros, setAllRegistros] = useState([]);
 
   useEffect(() => { cargar(); }, []);
 
@@ -338,6 +408,9 @@ export default function TecnicoPortal({ usuario, onSalir }) {
     setOrdenes(ordRes.data ?? []);
     setMateriales(matRes ?? []);
     setPerfil(perfRes.data);
+    // Cargar todos los registros de horas del técnico
+    const { data: regs } = await supabase.from("registro_horas").select("fecha, horas").eq("tecnico_id", usuario.id);
+    setAllRegistros(regs ?? []);
     setLoad(false);
   };
 
@@ -348,20 +421,18 @@ export default function TecnicoPortal({ usuario, onSalir }) {
     return e === filtro;
   });
 
-  const totalHrs = ordenes.reduce((s, o) => s + (Number(o.tiempo_real_hrs) || 0), 0);
+  const totalHrs = allRegistros.reduce((s, r) => s + (Number(r.horas) || 0), 0);
   const terminadas = ordenes.filter(o => o.ordenes_trabajo?.estado === "terminada").length;
   const enProceso = ordenes.filter(o => o.ordenes_trabajo?.estado === "en_proceso").length;
   const turno = perfil?.turno ?? "primero";
   const sem = getSemanaActual();
   const mes = getMesActual();
-  const hrsSem = ordenes.filter(s => {
-    const f = s.fecha_inicio ? new Date(s.fecha_inicio) : null;
-    return f && f >= sem.inicio && f <= sem.fin;
-  }).reduce((s, o) => s + (Number(o.tiempo_real_hrs) || 0), 0);
-  const hrsMes = ordenes.filter(s => {
-    const f = s.fecha_inicio ? new Date(s.fecha_inicio) : null;
-    return f && f >= mes.inicio && f <= mes.fin;
-  }).reduce((s, o) => s + (Number(o.tiempo_real_hrs) || 0), 0);
+  const semInicio = sem.inicio.toISOString().slice(0,10);
+  const semFin = sem.fin.toISOString().slice(0,10);
+  const mesInicio = mes.inicio.toISOString().slice(0,10);
+  const mesFin = mes.fin.toISOString().slice(0,10);
+  const hrsSem = allRegistros.filter(r => r.fecha >= semInicio && r.fecha <= semFin).reduce((s, r) => s + (Number(r.horas) || 0), 0);
+  const hrsMes = allRegistros.filter(r => r.fecha >= mesInicio && r.fecha <= mesFin).reduce((s, r) => s + (Number(r.horas) || 0), 0);
   const aprovSem = HRS_SEMANA[turno] > 0 ? Math.round((hrsSem / HRS_SEMANA[turno]) * 100) : 0;
   const aprovMes = HRS_MES[turno] > 0 ? Math.round((hrsMes / HRS_MES[turno]) * 100) : 0;
 
