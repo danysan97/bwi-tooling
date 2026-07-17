@@ -241,7 +241,7 @@ export default function PanelTecnicos() {
     // Registros de horas por sesión (fuente de verdad para horas trabajadas)
     const { data: regs } = await supabase
       .from("registro_horas")
-      .select("tecnico_id, fecha, horas")
+      .select("tecnico_id, fecha, horas, orden_id")
       .in("tecnico_id", tecs.map(t => t.id));
     const allRegs = regs ?? [];
     setAllRegs(allRegs);
@@ -252,6 +252,7 @@ export default function PanelTecnicos() {
     const met  = {};
 
     tecs.forEach(t => {
+      const misSegs = (allSegs ?? []).filter(s => s.tecnico_id === t.id);
       const misRegs = allRegs.filter(r => r.tecnico_id === t.id);
       const hrsDia  = HRS_DIA[t.turno ?? "primero"];
       const hrsSem  = HRS_SEMANA[t.turno ?? "primero"];
@@ -265,6 +266,15 @@ export default function PanelTecnicos() {
       const hrsTrabSem = misRegs.filter(r => r.fecha >= semInicio && r.fecha <= semFin).reduce((s, r) => s + (Number(r.horas) || 0), 0);
       const hrsTrabMes = misRegs.filter(r => r.fecha >= mesInicio && r.fecha <= mesFin).reduce((s, r) => s + (Number(r.horas) || 0), 0);
       const hrsTotal   = misRegs.reduce((s, r) => s + (Number(r.horas) || 0), 0);
+
+      const enSemana = misSegs.filter(s => {
+        const f = s.fecha_inicio;
+        return f && f.slice(0,10) >= semInicio && f.slice(0,10) <= semFin;
+      });
+      const enMes = misSegs.filter(s => {
+        const f = s.fecha_inicio;
+        return f && f.slice(0,10) >= mesInicio && f.slice(0,10) <= mesFin;
+      });
 
       met[t.id] = {
         hrsDia,
@@ -329,6 +339,11 @@ export default function PanelTecnicos() {
     const rangoInicio = rango.inicio.toISOString().slice(0, 10);
     const rangoFin    = rango.fin.toISOString().slice(0, 10);
 
+    const regsEnSemana = allRegs.filter(r => {
+      if (r.tecnico_id !== busqTecId) return false;
+      return r.fecha >= rangoInicio && r.fecha <= rangoFin;
+    });
+
     const enSemana = allSegs.filter(s => {
       if (s.tecnico_id !== busqTecId) return false;
       if (!s.fecha_inicio) return false;
@@ -336,10 +351,22 @@ export default function PanelTecnicos() {
       return f >= rangoInicio && f <= rangoFin;
     });
 
-    const regsEnSemana = allRegs.filter(r => {
-      if (r.tecnico_id !== busqTecId) return false;
-      return r.fecha >= rangoInicio && r.fecha <= rangoFin;
+    const ordenesConRegistros = allSegs.filter(s => {
+      if (s.tecnico_id !== busqTecId) return false;
+      return regsEnSemana.some(r => r.orden_id === s.orden_id);
     });
+
+    const ordenesUnicas = [...new Map([...enSemana, ...ordenesConRegistros].map(s => [s.orden_id, s])).values()];
+
+    const hrsPorOrden = {};
+    regsEnSemana.forEach(r => {
+      hrsPorOrden[r.orden_id] = (hrsPorOrden[r.orden_id] || 0) + (Number(r.horas) || 0);
+    });
+
+    const ordenesConHrs = ordenesUnicas.map(s => ({
+      ...s,
+      hrsSemana: parseFloat((hrsPorOrden[s.orden_id] || 0).toFixed(1)),
+    }));
 
     const hrsTrab = regsEnSemana.reduce((s, r) => s + (Number(r.horas) || 0), 0);
     const hrsDisp = HRS_SEMANA[tecnico?.turno ?? "primero"];
@@ -349,9 +376,9 @@ export default function PanelTecnicos() {
       horasTrab: parseFloat(hrsTrab.toFixed(1)),
       horasDisp: hrsDisp,
       aprov,
-      ordenes: enSemana,
-      total: enSemana.length,
-      terminadas: enSemana.filter(s => s.ordenes_trabajo?.estado === "terminada").length,
+      ordenes: ordenesConHrs,
+      total: ordenesConHrs.length,
+      terminadas: ordenesConHrs.filter(s => s.ordenes_trabajo?.estado === "terminada").length,
     });
     setBusqLoad(false);
   };
@@ -600,7 +627,7 @@ export default function PanelTecnicos() {
                             {EST_LABEL[s.ordenes_trabajo?.estado] ?? "—"}
                           </span>
                         </td>
-                        <td style={{ padding:"10px 14px", color:C.textSub }}>{s.tiempo_real_hrs ?? "—"}</td>
+                        <td style={{ padding:"10px 14px", color:C.textSub }}>{s.hrsSemana ?? "—"}h</td>
                       </tr>
                     ))}
                   </tbody>
