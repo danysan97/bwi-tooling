@@ -202,6 +202,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   };
 
   const guardarSeg = async () => {
+    if ((orden.prioridad === "1_seguridad" || orden.prioridad === "2_queja_cliente") && orden.autorizada !== true) { setMsg("Esta orden requiere autorización antes de guardar seguimiento."); return; }
     const tecValidos = tecnicosSeg.filter(t => t.tecnico_id);
     if (!tecValidos.length) { setMsg("Asigna al menos un técnico."); return; }
     if (!materialId && !materialOtro) { setMsg("Selecciona un material."); return; }
@@ -353,7 +354,23 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
           {tab === "seguimiento" && (
             <div style={{ display:"grid", gap:14 }}>
 
+              {/* Bloqueo de autorización para prioridad 1 y 2 */}
+              {(orden.prioridad === "1_seguridad" || orden.prioridad === "2_queja_cliente") && orden.autorizada !== true && (
+                <div style={{ background:C.warn+"18", border:`1px solid ${C.warn}55`, borderRadius:10, padding:"20px 24px", textAlign:"center" }}>
+                  <div style={{ fontSize:24, marginBottom:8 }}>🔒</div>
+                  <div style={{ fontWeight:700, fontSize:15, color:C.warn, marginBottom:6 }}>Autorización requerida</div>
+                  <div style={{ color:C.textSub, fontSize:13, marginBottom:14, lineHeight:1.5 }}>
+                    Esta orden requiere autorización de gerencia antes de poder asignar técnicos y fechas.<br/>
+                    Ve al tab <strong>"Estado"</strong> para autorizar o rechazar.
+                  </div>
+                  <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setTab("estado")} style={{ background:C.warn, color:"#fff", border:"none", borderRadius:8, padding:"10px 24px", fontWeight:700, cursor:"pointer", fontSize:13, transition:"all 0.2s" }}>
+                    Ir a Estado →
+                  </motion.button>
+                </div>
+              )}
+
               {/* Lista de técnicos */}
+              {((orden.prioridad !== "1_seguridad" && orden.prioridad !== "2_queja_cliente") || orden.autorizada === true) && (
               <div>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                   <Label>Técnicos asignados ({tecnicosSeg.length})</Label>
@@ -423,7 +440,6 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                   </div>
                 ))}
                 <div style={{ color:C.textSub, fontSize:12, marginTop:4 }}>Total horas: <strong style={{ color:C.text }}>{horasTotal.toFixed(1)} hrs</strong></div>
-              </div>
 
               {/* Material compartido */}
               <div>
@@ -445,6 +461,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={guardarSeg} disabled={guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"11px 0", fontWeight:700, cursor:"pointer", transition:"all 0.2s" }}>
                 {guardando ? "Guardando…" : "Guardar seguimiento"}
               </motion.button>
+              </div>
+              )}
             </div>
           )}
 
