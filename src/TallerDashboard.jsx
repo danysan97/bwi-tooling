@@ -101,10 +101,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const planoRef = useRef();
   const [subiendoPlano, setSubPlano] = useState(false);
   const [registrosMap, setRegistrosMap] = useState({}); // { tecnico_id: [...] }
-  const [nuevaFecha, setNuevaFecha] = useState(new Date().toISOString().slice(0,10));
-  const [nuevasHoras, setNuevasHoras] = useState("");
-  const [nuevoComentRH, setNuevoComentRH] = useState("");
-  const [agregandoRH, setAgregandoRH] = useState(false);
+  const [rhForms, setRhForms] = useState({}); // { tecnico_id: { fecha, horas, comentario, agregando } }
 
   useEffect(() => {
     if (!orden) return;
@@ -152,14 +149,18 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setRegistrosMap(grouped);
   };
 
+  const getRhForm = (techId) => rhForms[techId] ?? { fecha: new Date().toISOString().slice(0,10), horas: "", comentario: "", agregando: false };
+  const setRhField = (techId, field, value) => setRhForms(prev => ({ ...prev, [techId]: { ...getRhForm(techId), [field]: value } }));
+
   const handleAgregarHorasAdmin = async (tecnico_id) => {
-    if (!nuevaFecha || !nuevasHoras || Number(nuevasHoras) <= 0) return;
-    setAgregandoRH(true);
-    await agregarRegistroHoras(orden.no_orden, tecnico_id, nuevaFecha, Number(nuevasHoras), nuevoComentRH || null, usuario.id);
-    await registrarEvento(orden.no_orden, 'horas', `Registró ${nuevasHoras}h el ${nuevaFecha}${nuevoComentRH ? ": " + nuevoComentRH : ""}`, usuario.id);
-    setNuevasHoras(""); setNuevoComentRH("");
+    const form = getRhForm(tecnico_id);
+    if (!form.fecha || !form.horas || Number(form.horas) <= 0) return;
+    setRhField(tecnico_id, "agregando", true);
+    await agregarRegistroHoras(orden.no_orden, tecnico_id, form.fecha, Number(form.horas), form.comentario || null, usuario.id);
+    await registrarEvento(orden.no_orden, 'horas', `Registró ${form.horas}h el ${form.fecha}${form.comentario ? ": " + form.comentario : ""}`, usuario.id);
+    setRhField(tecnico_id, "horas", ""); setRhField(tecnico_id, "comentario", "");
     await cargarRegistrosAll();
-    setAgregandoRH(false);
+    setRhField(tecnico_id, "agregando", false);
     onActualizado();
   };
 
@@ -406,15 +407,15 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                         ))}
                         <div style={{ display:"grid", gridTemplateColumns:"90px 60px 1fr auto", gap:6, alignItems:"end", marginTop:6 }}>
                           <div>
-                            <input type="date" value={nuevaFecha} onChange={e => setNuevaFecha(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
+                            <input type="date" value={getRhForm(t.tecnico_id).fecha} onChange={e => setRhField(t.tecnico_id, "fecha", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
                           </div>
                           <div>
-                            <input type="number" step="0.5" min="0.5" placeholder="0" value={nuevasHoras} onChange={e => setNuevasHoras(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
+                            <input type="number" step="0.5" min="0.5" placeholder="0" value={getRhForm(t.tecnico_id).horas} onChange={e => setRhField(t.tecnico_id, "horas", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
                           </div>
                           <div>
-                            <input placeholder="Nota…" value={nuevoComentRH} onChange={e => setNuevoComentRH(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} onKeyDown={e => { if (e.key === "Enter" && !agregandoRH) handleAgregarHorasAdmin(t.tecnico_id); }} />
+                            <input placeholder="Nota…" value={getRhForm(t.tecnico_id).comentario} onChange={e => setRhField(t.tecnico_id, "comentario", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} onKeyDown={e => { if (e.key === "Enter" && !getRhForm(t.tecnico_id).agregando) handleAgregarHorasAdmin(t.tecnico_id); }} />
                           </div>
-                          <motion.button whileHover={!agregandoRH ? { scale:1.05 } : {}} whileTap={!agregandoRH ? { scale:0.95 } : {}} onClick={() => handleAgregarHorasAdmin(t.tecnico_id)} disabled={agregandoRH} style={{ background:agregandoRH?C.border:C.accent, color:agregandoRH?C.muted:"#fff", border:"none", borderRadius:6, width:28, height:28, cursor:agregandoRH?"default":"pointer", fontSize:16, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>+</motion.button>
+                          <motion.button whileHover={!getRhForm(t.tecnico_id).agregando ? { scale:1.05 } : {}} whileTap={!getRhForm(t.tecnico_id).agregando ? { scale:0.95 } : {}} onClick={() => handleAgregarHorasAdmin(t.tecnico_id)} disabled={getRhForm(t.tecnico_id).agregando} style={{ background:getRhForm(t.tecnico_id).agregando?C.border:C.accent, color:getRhForm(t.tecnico_id).agregando?C.muted:"#fff", border:"none", borderRadius:6, width:28, height:28, cursor:getRhForm(t.tecnico_id).agregando?"default":"pointer", fontSize:16, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>+</motion.button>
                         </div>
                         {(registrosMap[t.tecnico_id] ?? []).length === 0 && <div style={{ color:C.muted, fontSize:10, textAlign:"center", marginTop:4 }}>Sin registros</div>}
                       </div>
