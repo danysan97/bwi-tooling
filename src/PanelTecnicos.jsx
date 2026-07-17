@@ -237,6 +237,7 @@ export default function PanelTecnicos() {
       .in("tecnico_id", tecs.map(t => t.id));
 
     setAllSegs(segs ?? []);
+    const segsByOrden = new Map((segs ?? []).map(s => [s.orden_id, s]));
 
     // Registros de horas por sesión (fuente de verdad para horas trabajadas)
     const { data: regs } = await supabase
@@ -245,6 +246,18 @@ export default function PanelTecnicos() {
       .in("tecnico_id", tecs.map(t => t.id));
     const allRegs = regs ?? [];
     setAllRegs(allRegs);
+
+    const ordenIdsUnicos = [...new Set(allRegs.map(r => r.orden_id).filter(Boolean))];
+    const ordenIdsFaltantes = ordenIdsUnicos.filter(id => !segsByOrden.has(id));
+    if (ordenIdsFaltantes.length > 0) {
+      const { data: faltantes } = await supabase
+        .from("ordenes_trabajo")
+        .select("no_orden, nombre_pieza, estado, prioridad")
+        .in("no_orden", ordenIdsFaltantes);
+      (faltantes ?? []).forEach(o => {
+        segsByOrden.set(o.no_orden, { orden_id: o.no_orden, tecnico_id: null, fecha_inicio: null, fecha_termino: null, tiempo_real_hrs: null, ordenes_trabajo: o });
+      });
+    }
 
     // Calcular métricas por técnico usando registro_horas
     const sem  = getSemanaActual();
@@ -270,19 +283,22 @@ export default function PanelTecnicos() {
       const hrsTrabMes = regsMes.reduce((s, r) => s + (Number(r.horas) || 0), 0);
       const hrsTotal   = misRegs.reduce((s, r) => s + (Number(r.horas) || 0), 0);
 
+      const ordenIdsRegSem = [...new Set(regsSemana.map(r => r.orden_id).filter(Boolean))];
+      const ordenIdsRegMes = [...new Set(regsMes.map(r => r.orden_id).filter(Boolean))];
+
       const enSemanaFecha = misSegs.filter(s => {
         const f = s.fecha_inicio;
         return f && f.slice(0,10) >= semInicio && f.slice(0,10) <= semFin;
       });
-      const enSemanaConReg = misSegs.filter(s => regsSemana.some(r => r.orden_id === s.orden_id));
-      const enSemana = [...new Map([...enSemanaFecha, ...enSemanaConReg].map(s => [s.orden_id, s])).values()];
+      const enSemanaFromRegs = ordenIdsRegSem.map(id => segsByOrden.get(id)).filter(Boolean);
+      const enSemana = [...new Map([...enSemanaFecha, ...enSemanaFromRegs].map(s => [s.orden_id, s])).values()];
 
       const enMesFecha = misSegs.filter(s => {
         const f = s.fecha_inicio;
         return f && f.slice(0,10) >= mesInicio && f.slice(0,10) <= mesFin;
       });
-      const enMesConReg = misSegs.filter(s => regsMes.some(r => r.orden_id === s.orden_id));
-      const enMes = [...new Map([...enMesFecha, ...enMesConReg].map(s => [s.orden_id, s])).values()];
+      const enMesFromRegs = ordenIdsRegMes.map(id => segsByOrden.get(id)).filter(Boolean);
+      const enMes = [...new Map([...enMesFecha, ...enMesFromRegs].map(s => [s.orden_id, s])).values()];
 
       met[t.id] = {
         hrsDia,
@@ -359,10 +375,11 @@ export default function PanelTecnicos() {
       return f >= rangoInicio && f <= rangoFin;
     });
 
-    const ordenesConRegistros = allSegs.filter(s => {
-      if (s.tecnico_id !== busqTecId) return false;
-      return regsEnSemana.some(r => r.orden_id === s.orden_id);
-    });
+    const ordenIdsReg = [...new Set(regsEnSemana.map(r => r.orden_id).filter(Boolean))];
+    const ordenesConRegistros = ordenIdsReg.map(id => {
+      const s = allSegs.find(x => x.orden_id === id && x.tecnico_id === busqTecId);
+      return s ?? segsByOrden.get(id);
+    }).filter(Boolean);
 
     const ordenesUnicas = [...new Map([...enSemana, ...ordenesConRegistros].map(s => [s.orden_id, s])).values()];
 
