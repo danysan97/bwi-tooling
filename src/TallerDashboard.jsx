@@ -556,14 +556,6 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               </div>
             </div>
           )}
-              {orden.estado === "terminada" && orden.entregada && (
-                <div style={{ padding:"12px 16px", background:C.purple+"18", border:`1px solid ${C.purple}55`, borderRadius:10, color:C.purple, fontWeight:600, fontSize:14 }}>✅ Trabajo entregado</div>
-              )}
-              <div style={{ display:"flex", gap:8 }}>
-                <input placeholder="Agregar comentario…" value={nuevoComentario} onChange={e => setNuevoComent(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && nuevoComentario.trim()) agregarCom(); }} style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none", transition:"border-color 0.2s, box-shadow 0.2s" }} onFocus={e => { e.target.style.borderColor=C.accent; e.target.style.boxShadow=`0 0 0 3px ${C.accentGlow}`; }} onBlur={e => { e.target.style.borderColor=C.border; e.target.style.boxShadow="none"; }} />
-                <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={agregarCom} disabled={!nuevoComentario.trim() || guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:12, transition:"all 0.2s" }}>Comentar</motion.button>
-              </div>
-              {msg && <div style={{ color:C.success, fontSize:13 }}>{msg}</div>}
             </div>
           )}
 
@@ -574,6 +566,10 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 <Label>Historial de la orden</Label>
                 <button onClick={() => cargarHistorial(orden.no_orden).then(({ data }) => setHistorial(data ?? []))} style={{ background:C.border, color:C.textSub, border:"none", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontSize:11, transition:"background 0.2s" }}>🔄 Actualizar</button>
               </div>
+
+              {orden.estado === "terminada" && orden.entregada && (
+                <div style={{ padding:"12px 16px", background:"#8B5CF618", border:"1px solid #8B5CF655", borderRadius:10, color:"#8B5CF6", fontWeight:600, fontSize:14 }}>✅ Trabajo entregado</div>
+              )}
 
               {/* Timeline */}
               {historial.length === 0 ? (
@@ -602,6 +598,12 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                   })}
                 </div>
               )}
+
+              <div style={{ display:"flex", gap:8 }}>
+                <input placeholder="Agregar comentario…" value={nuevoComentario} onChange={e => setNuevoComent(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && nuevoComentario.trim()) agregarCom(); }} style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
+                <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={agregarCom} disabled={!nuevoComentario.trim() || guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", cursor:"pointer", fontWeight:600, fontSize:12 }}>Comentar</motion.button>
+              </div>
+              {msg && <div style={{ color:msg.includes("Error") ? C.danger : C.success, fontSize:13 }}>{msg}</div>}
             </div>
           )}
         </motion.div>

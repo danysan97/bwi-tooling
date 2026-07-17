@@ -252,6 +252,15 @@ export default function PanelTecnicos() {
     const met  = {};
 
     tecs.forEach(t => {
+      const misSegs = (allSegs ?? []).filter(s => s.tecnico_id === t.id);
+      const enSemana = misSegs.filter(s => {
+        const f = s.fecha_inicio;
+        return f && f.slice(0,10) >= semInicio && f.slice(0,10) <= semFin;
+      });
+      const enMes = misSegs.filter(s => {
+        const f = s.fecha_inicio;
+        return f && f.slice(0,10) >= mesInicio && f.slice(0,10) <= mesFin;
+      });
       const misRegs = allRegs.filter(r => r.tecnico_id === t.id);
       const hrsDia  = HRS_DIA[t.turno ?? "primero"];
       const hrsSem  = HRS_SEMANA[t.turno ?? "primero"];
@@ -306,7 +315,7 @@ export default function PanelTecnicos() {
         const hrs = allRegs
           .filter(r => r.tecnico_id === t.id && r.fecha >= iniStr && r.fecha <= finStr)
           .reduce((sum, r) => sum + (Number(r.horas) || 0), 0);
-        row[t.nombre_completo.split(" ")[0]] = parseFloat(hrs.toFixed(1));
+        row[t.no_empleado ?? t.nombre_completo.split(" ")[0]] = parseFloat(hrs.toFixed(1));
       });
       hist.push(row);
     }
@@ -511,7 +520,7 @@ export default function PanelTecnicos() {
               <Legend wrapperStyle={{ color:C.muted, fontSize:12 }} />
               {tecnicos.map((t,i) => (
                 <Line key={t.id} type="monotone"
-                  dataKey={t.nombre_completo.split(" ")[0]}
+                  dataKey={t.no_empleado ?? t.nombre_completo.split(" ")[0]}
                   stroke={colorTec[i % colorTec.length]}
                   strokeWidth={2} dot={{ r:4 }} />
               ))}

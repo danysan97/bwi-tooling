@@ -49,6 +49,7 @@ export default function ImprimirOrden({ orden, onCerrar }) {
   const imprimir = () => {
     const contenido = printRef.current.innerHTML;
     const ventana = window.open("", "_blank");
+    if (!ventana) { alert("El navegador bloqueó la ventana emergente. Permite popups para este sitio."); return; }
     ventana.document.write(`
       <!DOCTYPE html>
       <html>
