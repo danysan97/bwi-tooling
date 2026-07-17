@@ -351,9 +351,9 @@ export default function PanelTecnicos() {
   return (
     <>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-        <div>
+        <div style={{ display:"flex", alignItems:"baseline", gap:12 }}>
           <div style={{ color:C.text, fontWeight:700, fontSize:18 }}>Panel de Técnicos</div>
-          <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>
+          <div style={{ color:C.textSub, fontWeight:600, fontSize:14 }}>
             Semana {getNumeroSemana(new Date())} · {new Date().toLocaleDateString("es-MX", { month:"long", year:"numeric" })}
           </div>
         </div>
