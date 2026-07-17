@@ -198,6 +198,7 @@ export default function PanelTecnicos() {
   const [tecnicos, setTecnicos]     = useState([]);
   const [metricas, setMetricas]     = useState({});
   const [historico, setHistorico]   = useState([]);
+  const [histLabels, setHistLabels] = useState([]);
   const [loading, setLoad]          = useState(true);
   const [periodo, setPeriodo]       = useState("semana");
   const [tecSelec, setTecSelec]     = useState(null);
@@ -238,10 +239,6 @@ export default function PanelTecnicos() {
     // Calcular métricas por técnico
     const sem  = getSemanaActual();
     const mes  = getMesActual();
-    const semInicio = sem.inicio.toISOString().slice(0,10);
-    const semFin    = sem.fin.toISOString().slice(0,10);
-    const mesInicio = mes.inicio.toISOString().slice(0,10);
-    const mesFin    = mes.fin.toISOString().slice(0,10);
     const met  = {};
 
     tecs.forEach(t => {
@@ -251,12 +248,12 @@ export default function PanelTecnicos() {
       const hrsMes  = HRS_MES[t.turno ?? "primero"];
 
       const enSemana = misSegs.filter(s => {
-        const f = s.fecha_inicio ? s.fecha_inicio.slice(0,10) : null;
-        return f && f >= semInicio && f <= semFin;
+        const f = s.fecha_inicio ? new Date(s.fecha_inicio) : null;
+        return f && f >= sem.inicio && f <= sem.fin;
       });
       const enMes = misSegs.filter(s => {
-        const f = s.fecha_inicio ? s.fecha_inicio.slice(0,10) : null;
-        return f && f >= mesInicio && f <= mesFin;
+        const f = s.fecha_inicio ? new Date(s.fecha_inicio) : null;
+        return f && f >= mes.inicio && f <= mes.fin;
       });
 
       const hrsTrabSem = enSemana.reduce((s, x) => s + (Number(x.tiempo_real_hrs) || 0), 0);
@@ -285,30 +282,29 @@ export default function PanelTecnicos() {
 
     // Histórico mensual últimos 6 meses para gráfica de línea
     const hist = [];
+    const histLabels = [];
     for (let i = 5; i >= 0; i--) {
       const d     = new Date();
       d.setMonth(d.getMonth() - i);
       const ini   = new Date(d.getFullYear(), d.getMonth(), 1);
       const fin2  = new Date(d.getFullYear(), d.getMonth()+1, 0, 23, 59, 59);
-      const iniStr = ini.toISOString().slice(0,10);
-      const finStr = fin2.toISOString().slice(0,10);
+      const day   = fin2.getDate();
       const month = ini.toLocaleString("es-MX", { month:"short" }).replace('.','');
-      const year  = String(ini.getFullYear()).slice(2);
-      const label = `${month} '${year}`;
-      const row   = { mes: label };
+      const year  = ini.getFullYear();
+      const label = `${day} ${month} ${year}`;
+      histLabels.push(label);
+      const row   = { idx: i, label };
       tecs.forEach(t => {
         const hrs = (segs ?? [])
           .filter(s => s.tecnico_id === t.id && s.fecha_inicio)
-          .filter(s => {
-            const f = s.fecha_inicio.slice(0,10);
-            return f >= iniStr && f <= finStr;
-          })
+          .filter(s => { const f = new Date(s.fecha_inicio); return f >= ini && f <= fin2; })
           .reduce((sum, s) => sum + (Number(s.tiempo_real_hrs) || 0), 0);
         row[t.nombre_completo.split(" ")[0]] = parseFloat(hrs.toFixed(1));
       });
       hist.push(row);
     }
     setHistorico(hist);
+    setHistLabels(histLabels);
     setLoad(false);
   };
 
@@ -485,7 +481,12 @@ export default function PanelTecnicos() {
           <div style={{ color:C.text, fontSize:15, fontWeight:600, marginBottom:16 }}>Horas trabajadas — Últimos 6 meses</div>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={historico}>
-              <XAxis dataKey="mes" tick={{ fill:C.muted, fontSize:11 }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="idx" type="number" domain={[0, 5]} ticks={[0,1,2,3,4,5]}
+                tick={({ x, y, payload }) => {
+                  const lbl = histLabels[payload.value] ?? "";
+                  return <text x={x} y={y+16} textAnchor="middle" fill="#6B7280" fontSize={12}>{lbl}</text>;
+                }}
+                axisLine={false} tickLine={false} />
               <YAxis tick={{ fill:C.muted, fontSize:11 }} axisLine={false} tickLine={false} />
               <Tooltip content={<TooltipCustom />} />
               <Legend wrapperStyle={{ color:C.muted, fontSize:12 }} />
