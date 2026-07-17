@@ -107,15 +107,16 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
   const horasTotal = registros.reduce((s, r) => s + Number(r.horas), 0);
 
   const guardar = async () => {
-    if (!fechaInicio) { setMsg("La fecha de inicio es obligatoria."); return; }
+    if (!fechaInicio) { setMsg("Error: La fecha de inicio es obligatoria."); return; }
     setG(true); setMsg("");
-    await supabase.from("seguimiento_orden").update({
+    const { error } = await supabase.from("seguimiento_orden").update({
       fecha_inicio:  fechaInicio || null,
       fecha_termino: fechaTermino || null,
       material_id:   materialId || null,
       material_otro: materialOtro || null,
       comentarios:   comentarios || null,
     }).eq("id", segRow.id);
+    if (error) { setMsg("Error al guardar: " + error.message); setG(false); return; }
 
     if (!segRow.fecha_inicio && fechaInicio) {
       await registrarEvento(orden.no_orden, 'inicio', `Trabajo iniciado.`, usuario.id);
@@ -123,8 +124,8 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
     if (!segRow.fecha_termino && fechaTermino) {
       await registrarEvento(orden.no_orden, 'terminado', `Trabajo finalizado.`, usuario.id);
       if (orden.estado === "en_proceso") {
-        await supabase.from("ordenes_trabajo").update({ estado: "terminada" }).eq("no_orden", orden.no_orden);
-        await registrarEvento(orden.no_orden, 'cambio_estado', `Estado cambiado a terminada.`, usuario.id, { estado_anterior: "en_proceso", estado_nuevo: "terminada" });
+        const { error: e2 } = await supabase.from("ordenes_trabajo").update({ estado: "terminada" }).eq("no_orden", orden.no_orden);
+        if (!e2) await registrarEvento(orden.no_orden, 'cambio_estado', `Estado cambiado a terminada.`, usuario.id, { estado_anterior: "en_proceso", estado_nuevo: "terminada" });
       }
     }
 
@@ -247,9 +248,15 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
                   <div style={{ color:C.muted, fontSize:11, marginBottom:6 }}>Plano / Archivo adjunto</div>
                   {o.archivo_nombre?.match(/\.(pdf)$/i) ? (
                     <iframe src={planoUrl} style={{ width:"100%", height:400, border:`1px solid ${C.border}`, borderRadius:8 }} title="Plano" />
-                  ) : (
+                  ) : o.archivo_nombre?.match(/\.(png|jpe?g|gif|webp)$/i) ? (
                     <a href={planoUrl} target="_blank" rel="noopener noreferrer">
                       <img src={planoUrl} alt="Plano" style={{ maxWidth:"100%", maxHeight:400, borderRadius:8, border:`1px solid ${C.border}` }} />
+                    </a>
+                  ) : (
+                    <a href={planoUrl} download={o.archivo_nombre} target="_blank" rel="noopener noreferrer" style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8, padding:24, background:C.surface, border:`1px dashed ${C.border}`, borderRadius:10, color:C.textSub, textDecoration:"none" }}>
+                      <span style={{ fontSize:32 }}>📄</span>
+                      <span style={{ fontSize:13, fontWeight:600 }}>{o.archivo_nombre}</span>
+                      <span style={{ fontSize:11, color:C.muted }}>Haz clic para descargar</span>
                     </a>
                   )}
                 </div>
@@ -259,7 +266,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
 
           {tab === "mi_avance" && segRow && (
             <div style={{ display:"grid", gap:14, maxWidth:500 }}>
-              {msg && <div style={{ background:C.success+"18", border:`1px solid ${C.success}55`, borderRadius:8, padding:"10px 14px", color:C.success, fontSize:13 }}>{msg}</div>}
+              {msg && <div style={{ background:(msg.includes("Error") ? C.danger : C.success)+"18", border:`1px solid ${msg.includes("Error") ? C.danger : C.success}55`, borderRadius:8, padding:"10px 14px", color:msg.includes("Error") ? C.danger : C.success, fontSize:13 }}>{msg}</div>}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>
                   <Label required>Fecha inicio</Label>
@@ -293,7 +300,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
                         <span style={{ color:C.accent, fontWeight:700, fontSize:13, minWidth:40 }}>{r.horas}h</span>
                         {r.comentario && <span style={{ color:C.muted, fontSize:11, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.comentario}</span>}
                         {r.usuarios?.nombre_completo && <span style={{ color:C.muted, fontSize:10, marginLeft:"auto" }}>{r.usuarios.nombre_completo}</span>}
-                        <button onClick={() => handleEliminarRegistro(r)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:14, padding:2 }} title="Eliminar">✕</button>
+                        {(r.creado_por === usuario.id || r.tecnico_id === usuario.id) && <button onClick={() => handleEliminarRegistro(r)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:14, padding:2 }} title="Eliminar">✕</button>}
                       </div>
                     ))}
                   </div>

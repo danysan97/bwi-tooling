@@ -236,7 +236,7 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
                   <div style={{ position:"absolute", left:8, top:0, bottom:0, width:2, background:C.border }} />
                   {historial.map((ev) => {
                     const icon = { recepcion:"📥", asignacion:"👤", inicio:"🔧", comentario:"💬", autorizacion:"📋", cambio_estado:"🔄", material:"🔩", terminado:"✅", entrega:"📦", horas:"⏱" }[ev.evento_tipo] ?? "📌";
-                    const color = { recepcion:C.accent, asignacion:"#60A5FA", inicio:C.warn, comentario:"#A78BFA", autorizacion:"#F97316", cambio_estado:C.success, material:"#F59E0B", terminado:C.success, entrega:C.purple, horas:"#06B6D4" }[ev.evento_tipo] ?? C.muted;
+                    const color = { recepcion:C.accent, asignacion:"#60A5FA", inicio:C.warn, comentario:"#A78BFA", autorizacion:"#F97316", cambio_estado:C.success, material:"#F59E0B", terminado:C.success, entrega:"#8B5CF6", horas:"#06B6D4" }[ev.evento_tipo] ?? C.muted;
                     const label = { recepcion:"Recepción", asignacion:"Asignación", inicio:"Inicio", comentario:"Comentario", autorizacion:"Autorización", cambio_estado:"Cambio de estado", material:"Material", terminado:"Terminado", entrega:"Entrega", horas:"Registro de horas" }[ev.evento_tipo] ?? ev.evento_tipo;
                     const fecha = parseFechaUTC(ev.fecha_evento);
                     return (

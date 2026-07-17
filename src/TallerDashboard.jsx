@@ -101,6 +101,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const planoRef = useRef();
   const [subiendoPlano, setSubPlano] = useState(false);
   const [registrosMap, setRegistrosMap] = useState({}); // { tecnico_id: [...] }
+  const [formTechId, setFormTechId] = useState("");
   const [nuevaFecha, setNuevaFecha] = useState(new Date().toISOString().slice(0,10));
   const [nuevasHoras, setNuevasHoras] = useState("");
   const [nuevoComentRH, setNuevoComentRH] = useState("");
@@ -330,9 +331,15 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                   </div>
                   {orden.archivo_nombre?.match(/\.(pdf)$/i) ? (
                     <iframe src={planoUrl} style={{ width:"100%", height:400, border:`1px solid ${C.border}`, borderRadius:8 }} title="Plano" />
-                  ) : (
+                  ) : orden.archivo_nombre?.match(/\.(png|jpe?g|gif|webp)$/i) ? (
                     <a href={planoUrl} target="_blank" rel="noopener noreferrer">
                       <img src={planoUrl} alt="Plano" style={{ maxWidth:"100%", maxHeight:400, borderRadius:8, border:`1px solid ${C.border}`, cursor:"pointer" }} />
+                    </a>
+                  ) : (
+                    <a href={planoUrl} download={orden.archivo_nombre} target="_blank" rel="noopener noreferrer" style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8, padding:24, background:C.surface, border:`1px dashed ${C.border}`, borderRadius:10, color:C.textSub, textDecoration:"none", transition:"border-color 0.2s" }}>
+                      <span style={{ fontSize:32 }}>📄</span>
+                      <span style={{ fontSize:13, fontWeight:600 }}>{orden.archivo_nombre}</span>
+                      <span style={{ fontSize:11, color:C.muted }}>Haz clic para descargar</span>
                     </a>
                   )}
                 </div>
@@ -404,23 +411,36 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                             <button onClick={() => handleEliminarRegistroAdmin(r, t.tecnico_id)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:12, padding:2 }} title="Eliminar">✕</button>
                           </div>
                         ))}
-                        <div style={{ display:"grid", gridTemplateColumns:"90px 60px 1fr auto", gap:6, alignItems:"end", marginTop:6 }}>
-                          <div>
-                            <input type="date" value={nuevaFecha} onChange={e => setNuevaFecha(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
-                          </div>
-                          <div>
-                            <input type="number" step="0.5" min="0.5" placeholder="0" value={nuevasHoras} onChange={e => setNuevasHoras(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
-                          </div>
-                          <div>
-                            <input placeholder="Nota…" value={nuevoComentRH} onChange={e => setNuevoComentRH(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} onKeyDown={e => { if (e.key === "Enter" && !agregandoRH) handleAgregarHorasAdmin(t.tecnico_id); }} />
-                          </div>
-                          <motion.button whileHover={!agregandoRH ? { scale:1.05 } : {}} whileTap={!agregandoRH ? { scale:0.95 } : {}} onClick={() => handleAgregarHorasAdmin(t.tecnico_id)} disabled={agregandoRH} style={{ background:agregandoRH?C.border:C.accent, color:agregandoRH?C.muted:"#fff", border:"none", borderRadius:6, width:28, height:28, cursor:agregandoRH?"default":"pointer", fontSize:16, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>+</motion.button>
-                        </div>
                         {(registrosMap[t.tecnico_id] ?? []).length === 0 && <div style={{ color:C.muted, fontSize:10, textAlign:"center", marginTop:4 }}>Sin registros</div>}
                       </div>
                     )}
                   </div>
                 ))}
+                {Object.keys(registrosMap).length > 0 && (
+                  <div style={{ marginTop:8, padding:10, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+                      <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>AGREGAR HORAS A:</span>
+                      <select value={formTechId} onChange={e => setFormTechId(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"5px 8px", flex:1 }}>
+                        <option value="">— Seleccionar técnico —</option>
+                        {tecnicos.filter(tc => segTecs.some(st => st.tecnico_id === tc.id)).map(tc => <option key={tc.id} value={tc.id}>{tc.nombre_completo}</option>)}
+                      </select>
+                    </div>
+                    {formTechId && (
+                      <div style={{ display:"grid", gridTemplateColumns:"90px 60px 1fr auto", gap:6, alignItems:"end" }}>
+                        <div>
+                          <input type="date" value={nuevaFecha} onChange={e => setNuevaFecha(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
+                        </div>
+                        <div>
+                          <input type="number" step="0.5" min="0.5" placeholder="0" value={nuevasHoras} onChange={e => setNuevasHoras(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
+                        </div>
+                        <div>
+                          <input placeholder="Nota…" value={nuevoComentRH} onChange={e => setNuevoComentRH(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} onKeyDown={e => { if (e.key === "Enter" && !agregandoRH) handleAgregarHorasAdmin(formTechId); }} />
+                        </div>
+                        <motion.button whileHover={!agregandoRH ? { scale:1.05 } : {}} whileTap={!agregandoRH ? { scale:0.95 } : {}} onClick={() => handleAgregarHorasAdmin(formTechId)} disabled={agregandoRH} style={{ background:agregandoRH?C.border:C.accent, color:agregandoRH?C.muted:"#fff", border:"none", borderRadius:6, width:28, height:28, cursor:agregandoRH?"default":"pointer", fontSize:16, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>+</motion.button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div style={{ color:C.textSub, fontSize:12, marginTop:4 }}>Total horas: <strong style={{ color:C.text }}>{horasTotal.toFixed(1)} hrs</strong></div>
               </div>
 
