@@ -486,13 +486,18 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                         ) : (
                           <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.muted, fontSize:12 }}>
                             Disponible al estar en proceso
-                          </div>
-                        )}
                       </div>
+                    )}
+                    {!terminadaBloqueada && tecnicosSeg.length > 0 && (
+                      <div style={{ color:C.accent, fontSize:11, marginTop:6, background:C.accent+"10", border:`1px solid ${C.accent}33`, borderRadius:6, padding:"6px 10px", textAlign:"center", fontWeight:600 }}>
+                        Guarde seguimiento por cada técnico agregado para desbloquear el registro de horas.
+                      </div>
+                    )}
+                  </div>
                     </div>
 
-                    {/* Registros de horas — solo disponibles cuando la orden ya está en proceso */}
-                    {tecActivo.tecnico_id && (orden.estado === "en_proceso" || (orden.estado === "terminada" && editandoOrden)) && (
+                    {/* Registros de horas — bloqueados para el 1er técnico hasta tener material + fecha_inicio */}
+                    {tecActivo.tecnico_id && (tecnicosSeg.length > 1 || ((materialId || materialOtro) && tecActivo.fecha_inicio)) && (
                       <div style={{ marginTop:10, background:"#f8fafc", border:`1px solid ${C.border}`, borderRadius:8, padding:10 }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                           <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>REGISTRO DE HORAS</span>
