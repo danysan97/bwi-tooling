@@ -107,8 +107,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const [registrosMap, setRegistrosMap] = useState({}); // { tecnico_id: [...] }
   const [rhForms, setRhForms] = useState({}); // { tecnico_id: { fecha, horas, comentario, agregando } }
   const [tecnicoTermino, setTecnicoTermino] = useState("");
-  const [nuevoTecnicoId, setNuevoTecId] = useState("");
-  const [nuevoTecnicoHoras, setNuevoTecHoras] = useState("");
+  const [tecnicoActivo, setTecnicoActivo] = useState("");
 
   useEffect(() => {
     if (!orden) return;
@@ -122,8 +121,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setEditFechaIdx(null);
     setEditando(false);
     setTecnicoTermino("");
-    setNuevoTecId("");
-    setNuevoTecHoras("");
+    setTecnicoActivo("");
     if (orden.archivo_url) {
       obtenerUrlPlano(orden.archivo_url).then(({ url }) => setPlanoUrl(url));
     }
@@ -205,27 +203,27 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const terminadaBloqueada = orden.estado === "terminada" && !editandoOrden;
   const superadmin = usuario?.rol === "superadmin";
 
-  const agregarTecnicoDesdeBusqueda = () => {
-    if (!nuevoTecnicoId) { setMsg("Selecciona un técnico."); return; }
-    if (tecnicosSeg.some(t => t.tecnico_id === nuevoTecnicoId)) { setMsg("Este técnico ya está asignado."); return; }
-    setTecSeg(ts => [...ts, { id: null, tecnico_id: nuevoTecnicoId, fecha_inicio: "", fecha_termino: "", tiempo_real_hrs: nuevoTecnicoHoras || "" }]);
-    setNuevoTecId("");
-    setNuevoTecHoras("");
-    setMsg("");
+  const seleccionarTecnico = (tecnicoId) => {
+    if (!tecnicoId) { setTecnicoActivo(""); return; }
+    const yaAsignado = tecnicosSeg.some(t => t.tecnico_id === tecnicoId);
+    if (!yaAsignado) {
+      setTecSeg(ts => [...ts, { id: null, tecnico_id: tecnicoId, fecha_inicio: "", fecha_termino: "", tiempo_real_hrs: "" }]);
+    }
+    setTecnicoActivo(tecnicoId);
   };
-  const quitarTecnico = (idx) => {
-    setTecSeg(ts => ts.filter((_, i) => i !== idx));
-  };
+  const idxActivo = tecnicosSeg.findIndex(t => t.tecnico_id === tecnicoActivo);
+  const tecActivo = idxActivo >= 0 ? tecnicosSeg[idxActivo] : null;
   const actualizarTec = (idx, campo, valor) => {
     setTecSeg(ts => ts.map((t, i) => i === idx ? { ...t, [campo]: valor } : t));
   };
 
-  const guardarFechaInicio = async (idx) => {
-    const t = tecnicosSeg[idx];
+  const guardarFechaInicio = async () => {
+    if (idxActivo < 0) return;
+    const t = tecnicosSeg[idxActivo];
     if (!editFechaVal) { setMsg("Selecciona una fecha."); return; }
     if (!editFechaComent.trim()) { setMsg("Escribe el motivo del cambio de fecha."); return; }
     const fechaAnterior = t.fecha_inicio || "sin fecha";
-    actualizarTec(idx, "fecha_inicio", editFechaVal);
+    actualizarTec(idxActivo, "fecha_inicio", editFechaVal);
     if (t.id) {
       await supabase.from("asignaciones_tecnicos").update({ fecha_inicio: editFechaVal }).eq("id", t.id);
     }
@@ -411,70 +409,80 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 </div>
               )}
 
-              {/* Lista de técnicos */}
+              {/* Técnicos — selector por técnico */}
               {((orden.prioridad !== "1_seguridad" && orden.prioridad !== "2_queja_cliente") || orden.autorizada === true) && (
               <div>
+                {/* Encabezado + selector */}
                 <div style={{ marginBottom:10 }}>
-                  <Label>Técnicos asignados ({tecnicosSeg.length})</Label>
-                  <div style={{ color:C.textSub, fontSize:11, marginTop:2, marginBottom:8 }}>Seleccione al/los técnicos involucrados en el trabajo</div>
-                  {!terminadaBloqueada && (
-                    <div style={{ display:"flex", gap:6, alignItems:"end" }}>
-                      <div style={{ flex:1 }}>
-                        <Select value={nuevoTecnicoId} onChange={e => setNuevoTecId(e.target.value)}>
-                          <option value="">— Buscar técnico —</option>
-                          {tecnicos.filter(tec => !tecnicosSeg.some(t => t.tecnico_id === tec.id)).map(tec => <option key={tec.id} value={tec.id}>{tec.nombre_completo}</option>)}
-                        </Select>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <Label>Técnicos asignados ({tecnicosSeg.length})</Label>
+                    {tecnicosSeg.length > 0 && (
+                      <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                        {tecnicosSeg.filter(t => t.tecnico_id).map(t => {
+                          const tc = tecnicos.find(x => x.id === t.tecnico_id);
+                          const hrs = (registrosMap[t.tecnico_id] ?? []).reduce((s, r) => s + Number(r.horas), 0);
+                          return (
+                            <span key={t.tecnico_id} onClick={() => setTecnicoActivo(t.tecnico_id)} style={{ fontSize:10, padding:"2px 8px", borderRadius:9999, cursor:"pointer", background: t.tecnico_id === tecnicoActivo ? C.accent : C.bg, color: t.tecnico_id === tecnicoActivo ? "#fff" : C.textSub, border:`1px solid ${t.tecnico_id === tecnicoActivo ? C.accent : C.border}`, fontWeight:600, transition:"all 0.2s" }}>
+                              {tc?.nombre_completo?.split(" ")[0] || "?"} {hrs > 0 ? `· ${hrs.toFixed(1)}h` : ""}
+                            </span>
+                          );
+                        })}
                       </div>
-                      <motion.button whileHover={{ scale:1.05 }} whileTap={{ scale:0.95 }} onClick={agregarTecnicoDesdeBusqueda} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", fontWeight:700, cursor:"pointer", fontSize:13, whiteSpace:"nowrap" }}>＋ Agregar</motion.button>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                  <div style={{ color:C.textSub, fontSize:11, marginTop:2, marginBottom:8 }}>Seleccione al/los técnicos involucrados en el trabajo</div>
+                  <Select value={tecnicoActivo} onChange={e => seleccionarTecnico(e.target.value)}>
+                    <option value="">— Buscar y seleccionar técnico —</option>
+                    {tecnicos.map(tec => {
+                      const asignado = tecnicosSeg.some(t => t.tecnico_id === tec.id);
+                      return <option key={tec.id} value={tec.id}>{asignado ? "✓ " : ""}{tec.nombre_completo}</option>;
+                    })}
+                  </Select>
                 </div>
-                {tecnicosSeg.map((t, idx) => (
-                  <div key={idx} style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:10, padding:12, marginBottom:8 }}>
+
+                {/* Card del técnico activo */}
+                {tecActivo && (
+                  <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:10, padding:12, marginBottom:8 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                      <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>TÉCNICO {idx + 1}</span>
+                      <span style={{ color:C.accent, fontSize:12, fontWeight:700 }}>{tecnicos.find(tec => tec.id === tecActivo.tecnico_id)?.nombre_completo || "—"}</span>
                       {!terminadaBloqueada && tecnicosSeg.length > 1 && (
-                        <button onClick={() => quitarTecnico(idx)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:11, transition:"opacity 0.2s" }}>✕ Quitar</button>
+                        <button onClick={() => { setTecSeg(ts => ts.filter((_, i) => i !== idxActivo)); if (tecnicosSeg.length <= 2) setTecnicoActivo(tecnicosSeg.find((t, i) => i !== idxActivo)?.tecnico_id || ""); }} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:11 }}>✕ Quitar</button>
                       )}
                     </div>
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                      <div>
-                        <Label>Técnico</Label>
-                        <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13 }}>{tecnicos.find(tec => tec.id === t.tecnico_id)?.nombre_completo || "—"}</div>
-                      </div>
                       <div><Label>Fecha inicio</Label>
                         {terminadaBloqueada ? (
-                          <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color: t.fecha_inicio ? C.text : C.muted, fontSize:13 }}>
-                            {t.fecha_inicio ? new Date(t.fecha_inicio + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "Sin asignar"}
+                          <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color: tecActivo.fecha_inicio ? C.text : C.muted, fontSize:13 }}>
+                            {tecActivo.fecha_inicio ? new Date(tecActivo.fecha_inicio + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "Sin asignar"}
                           </div>
-                        ) : editandoFechaIdx === idx ? (
+                        ) : editandoFechaIdx === idxActivo ? (
                           <div style={{ display:"grid", gap:6 }}>
                             <DatePicker value={editFechaVal} onChange={setEditFechaVal} />
                             <input placeholder="Motivo del cambio…" value={editFechaComent} onChange={e => setEditFechaComent(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 8px" }} />
                             <div style={{ display:"flex", gap:6 }}>
-                              <button onClick={() => guardarFechaInicio(idx)} style={{ flex:1, background:C.success, color:"#fff", border:"none", borderRadius:6, padding:"5px 0", fontSize:11, fontWeight:700, cursor:"pointer" }}>Guardar</button>
+                              <button onClick={guardarFechaInicio} style={{ flex:1, background:C.success, color:"#fff", border:"none", borderRadius:6, padding:"5px 0", fontSize:11, fontWeight:700, cursor:"pointer" }}>Guardar</button>
                               <button onClick={() => { setEditFechaIdx(null); setEditFechaVal(""); setEditFechaComent(""); }} style={{ flex:1, background:C.border, color:C.text, border:"none", borderRadius:6, padding:"5px 0", fontSize:11, fontWeight:600, cursor:"pointer" }}>Cancelar</button>
                             </div>
                           </div>
-                        ) : t.fecha_inicio ? (
+                        ) : tecActivo.fecha_inicio ? (
                           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                             <div style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13 }}>
-                              {new Date(t.fecha_inicio + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})}
+                              {new Date(tecActivo.fecha_inicio + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})}
                             </div>
-                            <motion.button whileHover={{ scale:1.1 }} whileTap={{ scale:0.9 }} onClick={() => { setEditFechaIdx(idx); setEditFechaVal(t.fecha_inicio); setEditFechaComent(""); }} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"6px 8px", fontSize:11, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>✎ Editar</motion.button>
+                            <motion.button whileHover={{ scale:1.1 }} whileTap={{ scale:0.9 }} onClick={() => { setEditFechaIdx(idxActivo); setEditFechaVal(tecActivo.fecha_inicio); setEditFechaComent(""); }} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"6px 8px", fontSize:11, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>✎ Editar</motion.button>
                           </div>
                         ) : (
-                          <DatePicker value={t.fecha_inicio} onChange={v => actualizarTec(idx, "fecha_inicio", v)} />
+                          <DatePicker value={tecActivo.fecha_inicio} onChange={v => actualizarTec(idxActivo, "fecha_inicio", v)} />
                         )}
                       </div>
                       <div>
                         <Label>Fecha término</Label>
                         {terminadaBloqueada ? (
-                          <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color: t.fecha_termino ? C.text : C.muted, fontSize:13 }}>
-                            {t.fecha_termino ? new Date(t.fecha_termino + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—"}
+                          <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color: tecActivo.fecha_termino ? C.text : C.muted, fontSize:13 }}>
+                            {tecActivo.fecha_termino ? new Date(tecActivo.fecha_termino + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—"}
                           </div>
                         ) : (estado === "en_proceso" || estado === "terminada") ? (
-                          <DatePicker value={t.fecha_termino} onChange={v => actualizarTec(idx, "fecha_termino", v)} />
+                          <DatePicker value={tecActivo.fecha_termino} onChange={v => actualizarTec(idxActivo, "fecha_termino", v)} />
                         ) : (
                           <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.muted, fontSize:12 }}>
                             Disponible al estar en proceso
@@ -483,47 +491,47 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                       </div>
                     </div>
 
-                    {/* Registros de horas por sesión */}
-                    {t.id && t.tecnico_id && (
-                      <div style={{ marginTop:10, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:10 }}>
+                    {/* Registros de horas */}
+                    {tecActivo.id && tecActivo.tecnico_id && (
+                      <div style={{ marginTop:10, background:"#f8fafc", border:`1px solid ${C.border}`, borderRadius:8, padding:10 }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                           <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>REGISTRO DE HORAS</span>
                           <span style={{ color:C.accent, fontWeight:700, fontSize:13 }}>
-                            {(registrosMap[t.tecnico_id] ?? []).reduce((s, r) => s + Number(r.horas), 0).toFixed(1)}h
+                            {(registrosMap[tecActivo.tecnico_id] ?? []).reduce((s, r) => s + Number(r.horas), 0).toFixed(1)}h
                           </span>
                         </div>
-                        {(registrosMap[t.tecnico_id] ?? []).map(r => (
+                        {(registrosMap[tecActivo.tecnico_id] ?? []).map(r => (
                           <div key={r.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 8px", background:C.surface, borderRadius:6, border:`1px solid ${C.border}`, marginBottom:4 }}>
                             <span style={{ color:C.textSub, fontSize:11, minWidth:80 }}>{new Date(r.fecha + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short"})}</span>
                             <span style={{ color:C.accent, fontWeight:700, fontSize:12 }}>{r.horas}h</span>
                             {r.comentario && <span style={{ color:C.muted, fontSize:10, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.comentario}</span>}
-                            {!terminadaBloqueada && <button onClick={() => handleEliminarRegistroAdmin(r, t.tecnico_id)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:12, padding:2 }} title="Eliminar">✕</button>}
+                            {!terminadaBloqueada && <button onClick={() => handleEliminarRegistroAdmin(r, tecActivo.tecnico_id)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:12, padding:2 }} title="Eliminar">✕</button>}
                           </div>
                         ))}
                         {!terminadaBloqueada && (
                         <div style={{ display:"grid", gridTemplateColumns:"115px 60px 1fr auto", gap:6, alignItems:"end", marginTop:6 }}>
                           <div>
-                            <input type="date" value={getRhForm(t.tecnico_id).fecha} onChange={e => setRhField(t.tecnico_id, "fecha", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
+                            <input type="date" value={getRhForm(tecActivo.tecnico_id).fecha} onChange={e => setRhField(tecActivo.tecnico_id, "fecha", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
                           </div>
                           <div>
-                            <input type="number" step="0.5" min="0.5" placeholder="0" value={getRhForm(t.tecnico_id).horas} onChange={e => setRhField(t.tecnico_id, "horas", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
+                            <input type="number" step="0.5" min="0.5" placeholder="0" value={getRhForm(tecActivo.tecnico_id).horas} onChange={e => setRhField(tecActivo.tecnico_id, "horas", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
                           </div>
                           <div>
-                            <input placeholder="Nota…" value={getRhForm(t.tecnico_id).comentario} onChange={e => setRhField(t.tecnico_id, "comentario", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} onKeyDown={e => { if (e.key === "Enter" && !getRhForm(t.tecnico_id).agregando) handleAgregarHorasAdmin(t.tecnico_id); }} />
+                            <input placeholder="Nota…" value={getRhForm(tecActivo.tecnico_id).comentario} onChange={e => setRhField(tecActivo.tecnico_id, "comentario", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} onKeyDown={e => { if (e.key === "Enter" && !getRhForm(tecActivo.tecnico_id).agregando) handleAgregarHorasAdmin(tecActivo.tecnico_id); }} />
                           </div>
-                          <motion.button whileHover={!getRhForm(t.tecnico_id).agregando ? { scale:1.05 } : {}} whileTap={!getRhForm(t.tecnico_id).agregando ? { scale:0.95 } : {}} onClick={() => handleAgregarHorasAdmin(t.tecnico_id)} disabled={getRhForm(t.tecnico_id).agregando} style={{ background:getRhForm(t.tecnico_id).agregando?C.border:C.accent, color:getRhForm(t.tecnico_id).agregando?C.muted:"#fff", border:"none", borderRadius:6, width:28, height:28, cursor:getRhForm(t.tecnico_id).agregando?"default":"pointer", fontSize:16, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>+</motion.button>
-                         </div>
-                         )}
-                        {(registrosMap[t.tecnico_id] ?? []).length === 0 && <div style={{ color:C.muted, fontSize:10, textAlign:"center", marginTop:4 }}>Sin registros</div>}
+                          <motion.button whileHover={!getRhForm(tecActivo.tecnico_id).agregando ? { scale:1.05 } : {}} whileTap={!getRhForm(tecActivo.tecnico_id).agregando ? { scale:0.95 } : {}} onClick={() => handleAgregarHorasAdmin(tecActivo.tecnico_id)} disabled={getRhForm(tecActivo.tecnico_id).agregando} style={{ background:getRhForm(tecActivo.tecnico_id).agregando?C.border:C.accent, color:getRhForm(tecActivo.tecnico_id).agregando?C.muted:"#fff", border:"none", borderRadius:6, width:28, height:28, cursor:getRhForm(tecActivo.tecnico_id).agregando?"default":"pointer", fontSize:16, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>+</motion.button>
+                        </div>
+                        )}
+                        {(registrosMap[tecActivo.tecnico_id] ?? []).length === 0 && <div style={{ color:C.muted, fontSize:10, textAlign:"center", marginTop:4 }}>Sin registros</div>}
                       </div>
                     )}
-                    {!t.id && t.tecnico_id && (
+                    {!tecActivo.id && tecActivo.tecnico_id && (
                       <div style={{ color:C.warn, fontSize:11, marginTop:6, background:C.warn+"12", border:`1px solid ${C.warn}44`, borderRadius:6, padding:"6px 10px", textAlign:"center" }}>
                         Guarda el seguimiento para poder registrar horas.
                       </div>
                     )}
                   </div>
-                ))}
+                )}
                 <div style={{ color:C.textSub, fontSize:12, marginTop:4 }}>Total horas: <strong style={{ color:C.text }}>{horasTotal.toFixed(1)} hrs</strong></div>
 
                 {/* ¿Quién terminó la orden? */}
