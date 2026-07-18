@@ -88,7 +88,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
     setAgregando(true); setMsg("");
     const { error } = await agregarRegistroHoras(orden.no_orden, usuario.id, nuevaFecha, Number(nuevasHoras), nuevoComent || null, usuario.id);
     if (error) { setMsg("Error: " + error.message); setAgregando(false); return; }
-    await registrarEvento(orden.no_orden, 'horas', `Registró ${nuevasHoras}h el ${nuevaFecha}${nuevoComent ? ": " + nuevoComent : ""}`, usuario.id);
+    await registrarEvento(orden.no_orden, 'horas', `${usuario.nombre_completo || "Técnico"}: ${nuevasHoras}h el ${nuevaFecha}${nuevoComent ? ": " + nuevoComent : ""}`, usuario.id);
     setNuevasHoras(""); setNuevoComent("");
     await cargarRegistros();
     setMsg("Registro de horas guardado.");
@@ -99,7 +99,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
   const handleEliminarRegistro = async (reg) => {
     if (!window.confirm(`¿Eliminar registro de ${reg.horas}h del ${reg.fecha}?`)) return;
     await eliminarRegistroHoras(reg.id, orden.no_orden, usuario.id);
-    await registrarEvento(orden.no_orden, 'horas', `Eliminó registro de ${reg.horas}h del ${reg.fecha}`, usuario.id);
+    await registrarEvento(orden.no_orden, 'horas', `Eliminó registro de ${usuario.nombre_completo || "Técnico"}: ${reg.horas}h del ${reg.fecha}`, usuario.id);
     await cargarRegistros();
     onGuardado();
   };

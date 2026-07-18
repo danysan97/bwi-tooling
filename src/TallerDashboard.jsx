@@ -167,7 +167,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     if (!form.fecha || !form.horas || Number(form.horas) <= 0) return;
     setRhField(tecnico_id, "agregando", true);
     await agregarRegistroHoras(orden.no_orden, tecnico_id, form.fecha, Number(form.horas), form.comentario || null, usuario.id);
-    await registrarEvento(orden.no_orden, 'horas', `Registró ${form.horas}h el ${form.fecha}${form.comentario ? ": " + form.comentario : ""}`, usuario.id);
+    await registrarEvento(orden.no_orden, 'horas', `${tecnicos.find(x => x.id === tecnico_id)?.nombre_completo || "Técnico"}: ${form.horas}h el ${form.fecha}${form.comentario ? ": " + form.comentario : ""}`, usuario.id);
     setRhField(tecnico_id, "horas", ""); setRhField(tecnico_id, "comentario", "");
     await cargarRegistrosAll();
     setRhField(tecnico_id, "agregando", false);
@@ -177,7 +177,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const handleEliminarRegistroAdmin = async (reg, tecnico_id) => {
     if (!window.confirm(`¿Eliminar registro de ${reg.horas}h del ${reg.fecha}?`)) return;
     await eliminarRegistroHoras(reg.id, orden.no_orden, tecnico_id);
-    await registrarEvento(orden.no_orden, 'horas', `Eliminó registro de ${reg.horas}h del ${reg.fecha}`, usuario.id);
+    await registrarEvento(orden.no_orden, 'horas', `Eliminó registro de ${tecnicos.find(x => x.id === tecnico_id)?.nombre_completo || "Técnico"}: ${reg.horas}h del ${reg.fecha}`, usuario.id);
     await cargarRegistrosAll();
     onActualizado();
   };
