@@ -277,6 +277,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
               </div>
 
               {/* ── Registro de horas por sesión ── */}
+              {fechaInicio ? (
               <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:10, padding:"14px 16px" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
                   <Label>Registro de horas</Label>
@@ -318,6 +319,11 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
                 </div>
                 {registros.length === 0 && <div style={{ color:C.muted, fontSize:11, textAlign:"center", marginTop:8 }}>Sin registros aún. Usa "+" para agregar horas trabajadas.</div>}
               </div>
+              ) : (
+                <div style={{ background:C.warn+"18", border:`1px solid ${C.warn}55`, borderRadius:8, padding:"12px 16px", textAlign:"center" }}>
+                  <div style={{ color:C.warn, fontWeight:600, fontSize:13 }}>⚠️ El admin debe guardar tu asignación (técnico + material + fecha de inicio) antes de registrar horas.</div>
+                </div>
+              )}
 
               <div>
                 <Label>Material utilizado</Label>

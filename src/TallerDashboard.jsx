@@ -408,7 +408,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                     </div>
 
                     {/* Registros de horas por sesión */}
-                    {t.tecnico_id && (
+                    {t.id && t.tecnico_id && (
                       <div style={{ marginTop:10, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:10 }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                           <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>REGISTRO DE HORAS</span>
@@ -437,6 +437,11 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                           <motion.button whileHover={!getRhForm(t.tecnico_id).agregando ? { scale:1.05 } : {}} whileTap={!getRhForm(t.tecnico_id).agregando ? { scale:0.95 } : {}} onClick={() => handleAgregarHorasAdmin(t.tecnico_id)} disabled={getRhForm(t.tecnico_id).agregando} style={{ background:getRhForm(t.tecnico_id).agregando?C.border:C.accent, color:getRhForm(t.tecnico_id).agregando?C.muted:"#fff", border:"none", borderRadius:6, width:28, height:28, cursor:getRhForm(t.tecnico_id).agregando?"default":"pointer", fontSize:16, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>+</motion.button>
                         </div>
                         {(registrosMap[t.tecnico_id] ?? []).length === 0 && <div style={{ color:C.muted, fontSize:10, textAlign:"center", marginTop:4 }}>Sin registros</div>}
+                      </div>
+                    )}
+                    {!t.id && t.tecnico_id && (
+                      <div style={{ color:C.warn, fontSize:11, marginTop:6, background:C.warn+"12", border:`1px solid ${C.warn}44`, borderRadius:6, padding:"6px 10px", textAlign:"center" }}>
+                        Guarda el seguimiento para poder registrar horas.
                       </div>
                     )}
                   </div>
