@@ -268,7 +268,11 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
                 </div>
                 <div>
                   <Label>Fecha término</Label>
-                  {(orden.estado === "en_proceso" || orden.estado === "terminada") ? (
+                  {orden.estado === "terminada" ? (
+                    <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color: fechaTermino ? C.text : C.muted, fontSize:13 }}>
+                      {fechaTermino ? new Date(fechaTermino + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—"}
+                    </div>
+                  ) : (orden.estado === "en_proceso") ? (
                     <DatePicker value={fechaTermino} onChange={setFTermino} />
                   ) : (
                     <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color:C.muted, fontSize:12 }}>
@@ -295,13 +299,14 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
                         <span style={{ color:C.accent, fontWeight:700, fontSize:13, minWidth:40 }}>{r.horas}h</span>
                         {r.comentario && <span style={{ color:C.muted, fontSize:11, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.comentario}</span>}
                         {r.usuarios?.nombre_completo && <span style={{ color:C.muted, fontSize:10, marginLeft:"auto" }}>{r.usuarios.nombre_completo}</span>}
-                        <button onClick={() => handleEliminarRegistro(r)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:14, padding:2 }} title="Eliminar">✕</button>
+                        {orden.estado !== "terminada" && <button onClick={() => handleEliminarRegistro(r)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:14, padding:2 }} title="Eliminar">✕</button>}
                       </div>
                     ))}
                   </div>
                 )}
 
                 {/* Formulario nuevo registro */}
+                {orden.estado !== "terminada" && (
                 <div style={{ display:"grid", gridTemplateColumns:"110px 70px 1fr auto", gap:8, alignItems:"end" }}>
                   <div>
                     <div style={{ color:C.muted, fontSize:10, marginBottom:3 }}>Fecha</div>
@@ -319,6 +324,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
                     +
                   </motion.button>
                 </div>
+                )}
                 {registros.length === 0 && <div style={{ color:C.muted, fontSize:11, textAlign:"center", marginTop:8 }}>Sin registros aún. Usa "+" para agregar horas trabajadas.</div>}
               </div>
               ) : (
@@ -329,14 +335,22 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
 
               <div>
                 <Label>Material utilizado</Label>
+                {orden.estado === "terminada" ? (
+                  <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color: materialId ? C.text : C.muted, fontSize:13 }}>
+                    {materialId ? (materiales.find(m => m.id === materialId)?.nombre || "Otro") + (materialOtro ? ` (${materialOtro})` : "") : "—"}
+                  </div>
+                ) : (
+                <>
                 <select value={materialId} onChange={e => setMatId(e.target.value)}
                   style={{ ...inputStyle, cursor:"pointer" }} {...focusRing}>
                   <option value="">— Seleccionar —</option>
                   {materiales.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
                   <option value="otro">Otro</option>
                 </select>
+                </>
+                )}
               </div>
-              {materialId === "otro" && (
+              {materialId === "otro" && orden.estado !== "terminada" && (
                 <div>
                   <Label>Otro material</Label>
                   <input placeholder="Especifica el material" value={materialOtro} onChange={e => setMatOtro(e.target.value)}
@@ -345,12 +359,20 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
               )}
               <div>
                 <Label>Comentarios</Label>
+                {orden.estado === "terminada" ? (
+                  <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", color: comentarios ? C.text : C.muted, fontSize:13, whiteSpace:"pre-wrap" }}>
+                    {comentarios || "—"}
+                  </div>
+                ) : (
                 <textarea rows={3} placeholder="Observaciones, detalles del trabajo…" value={comentarios} onChange={e => setComent(e.target.value)}
                   style={{ ...inputStyle, resize:"vertical" }} {...focusRing} />
+                )}
               </div>
+              {orden.estado !== "terminada" && (
               <motion.button whileHover={!guardando ? { scale:1.02 } : {}} whileTap={!guardando ? { scale:0.98 } : {}} onClick={guardar} disabled={guardando} style={{ background:guardando?C.border:C.accent, color:guardando?C.muted:"#fff", border:"none", borderRadius:10, padding:"11px 0", cursor:guardando?"default":"pointer", fontWeight:700, fontSize:14, transition:"all 0.2s" }}>
                 {guardando ? "Guardando…" : "Guardar avance"}
               </motion.button>
+              )}
             </div>
           )}
 

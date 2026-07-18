@@ -101,6 +101,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const [editandoFechaIdx, setEditFechaIdx] = useState(null);
   const [editFechaVal, setEditFechaVal] = useState("");
   const [editFechaComent, setEditFechaComent] = useState("");
+  const [editandoOrden, setEditando] = useState(false);
   const planoRef = useRef();
   const [subiendoPlano, setSubPlano] = useState(false);
   const [registrosMap, setRegistrosMap] = useState({}); // { tecnico_id: [...] }
@@ -116,6 +117,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setPuestoAut("");
     setPlanoUrl(null);
     setEditFechaIdx(null);
+    setEditando(false);
     if (orden.archivo_url) {
       obtenerUrlPlano(orden.archivo_url).then(({ url }) => setPlanoUrl(url));
     }
@@ -194,6 +196,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   };
 
   if (!orden) return null;
+  const terminadaBloqueada = orden.estado === "terminada" && !editandoOrden;
+  const superadmin = usuario?.rol === "superadmin";
 
   const agregarTecnico = () => {
     setTecSeg(ts => [...ts, { id: null, tecnico_id: "", fecha_inicio: "", fecha_termino: "", tiempo_real_hrs: "" }]);
@@ -286,6 +290,9 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={verPlano} style={{ background:C.border, color:C.text, border:"none", borderRadius:6, padding:"2px 10px", fontSize:12, cursor:"pointer", transition:"all 0.2s" }}>📎 Ver plano</motion.button>
             )}
             <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setImp(true)} style={{ background:"#1B3A6B", color:"#fff", border:"none", borderRadius:6, padding:"2px 10px", fontSize:12, cursor:"pointer" }}>🖨️ Imprimir</motion.button>
+            {orden.estado === "terminada" && superadmin && (
+              <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={() => setEditando(v => !v)} style={{ background: editandoOrden ? C.danger : C.accent, color:"#fff", border:"none", borderRadius:6, padding:"2px 10px", fontSize:12, cursor:"pointer" }}>{editandoOrden ? "✕ Salir edición" : "✎ Editar orden"}</motion.button>
+            )}
           </div>
 
           <div style={{ display:"flex", gap:4, marginBottom:20, background:C.bg, borderRadius:9999, padding:4 }}>
@@ -396,23 +403,27 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               <div>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                   <Label>Técnicos asignados ({tecnicosSeg.length})</Label>
-                  <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={agregarTecnico} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:9999, padding:"4px 10px", cursor:"pointer", fontSize:11, fontWeight:600, transition:"all 0.2s" }}>+ Agregar técnico</motion.button>
+                  {!terminadaBloqueada && <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={agregarTecnico} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:9999, padding:"4px 10px", cursor:"pointer", fontSize:11, fontWeight:600, transition:"all 0.2s" }}>+ Agregar técnico</motion.button>}
                 </div>
                 {tecnicosSeg.map((t, idx) => (
                   <div key={idx} style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:10, padding:12, marginBottom:8 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                       <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>TÉCNICO {idx + 1}</span>
-                      {tecnicosSeg.length > 1 && (
+                      {!terminadaBloqueada && tecnicosSeg.length > 1 && (
                         <button onClick={() => quitarTecnico(idx)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:11, transition:"opacity 0.2s" }}>✕ Quitar</button>
                       )}
                     </div>
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                       <div>
                         <Label>Técnico</Label>
+                        {terminadaBloqueada ? (
+                          <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13 }}>{tecnicos.find(tec => tec.id === t.tecnico_id)?.nombre_completo || "—"}</div>
+                        ) : (
                         <Select value={t.tecnico_id} onChange={e => actualizarTec(idx, "tecnico_id", e.target.value)}>
                           <option value="">— Seleccionar —</option>
                           {tecnicos.map(tec => <option key={tec.id} value={tec.id}>{tec.nombre_completo}</option>)}
                         </Select>
+                        )}
                       </div>
                       <div><Label>Fecha inicio</Label>
                         {editandoFechaIdx === idx ? (
@@ -429,13 +440,17 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                             <div style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color: t.fecha_inicio ? C.text : C.muted, fontSize:13 }}>
                               {t.fecha_inicio ? new Date(t.fecha_inicio + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "Sin asignar"}
                             </div>
-                            <motion.button whileHover={{ scale:1.1 }} whileTap={{ scale:0.9 }} onClick={() => { setEditFechaIdx(idx); setEditFechaVal(t.fecha_inicio || ""); setEditFechaComent(""); }} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"6px 8px", fontSize:11, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>✎ Editar</motion.button>
+                            {!terminadaBloqueada && <motion.button whileHover={{ scale:1.1 }} whileTap={{ scale:0.9 }} onClick={() => { setEditFechaIdx(idx); setEditFechaVal(t.fecha_inicio || ""); setEditFechaComent(""); }} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"6px 8px", fontSize:11, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>✎ Editar</motion.button>}
                           </div>
                         )}
                       </div>
                       <div>
                         <Label>Fecha término</Label>
-                        {(estado === "en_proceso" || estado === "terminada") ? (
+                        {terminadaBloqueada ? (
+                          <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color: t.fecha_termino ? C.text : C.muted, fontSize:13 }}>
+                            {t.fecha_termino ? new Date(t.fecha_termino + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—"}
+                          </div>
+                        ) : (estado === "en_proceso" || estado === "terminada") ? (
                           <DatePicker value={t.fecha_termino} onChange={v => actualizarTec(idx, "fecha_termino", v)} />
                         ) : (
                           <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.muted, fontSize:12 }}>
@@ -459,9 +474,10 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                             <span style={{ color:C.textSub, fontSize:11, minWidth:80 }}>{new Date(r.fecha + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short"})}</span>
                             <span style={{ color:C.accent, fontWeight:700, fontSize:12 }}>{r.horas}h</span>
                             {r.comentario && <span style={{ color:C.muted, fontSize:10, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.comentario}</span>}
-                            <button onClick={() => handleEliminarRegistroAdmin(r, t.tecnico_id)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:12, padding:2 }} title="Eliminar">✕</button>
+                            {!terminadaBloqueada && <button onClick={() => handleEliminarRegistroAdmin(r, t.tecnico_id)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:12, padding:2 }} title="Eliminar">✕</button>}
                           </div>
                         ))}
+                        {!terminadaBloqueada && (
                         <div style={{ display:"grid", gridTemplateColumns:"115px 60px 1fr auto", gap:6, alignItems:"end", marginTop:6 }}>
                           <div>
                             <input type="date" value={getRhForm(t.tecnico_id).fecha} onChange={e => setRhField(t.tecnico_id, "fecha", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} />
@@ -473,7 +489,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                             <input placeholder="Nota…" value={getRhForm(t.tecnico_id).comentario} onChange={e => setRhField(t.tecnico_id, "comentario", e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 7px" }} onKeyDown={e => { if (e.key === "Enter" && !getRhForm(t.tecnico_id).agregando) handleAgregarHorasAdmin(t.tecnico_id); }} />
                           </div>
                           <motion.button whileHover={!getRhForm(t.tecnico_id).agregando ? { scale:1.05 } : {}} whileTap={!getRhForm(t.tecnico_id).agregando ? { scale:0.95 } : {}} onClick={() => handleAgregarHorasAdmin(t.tecnico_id)} disabled={getRhForm(t.tecnico_id).agregando} style={{ background:getRhForm(t.tecnico_id).agregando?C.border:C.accent, color:getRhForm(t.tecnico_id).agregando?C.muted:"#fff", border:"none", borderRadius:6, width:28, height:28, cursor:getRhForm(t.tecnico_id).agregando?"default":"pointer", fontSize:16, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>+</motion.button>
-                        </div>
+                         </div>
+                         )}
                         {(registrosMap[t.tecnico_id] ?? []).length === 0 && <div style={{ color:C.muted, fontSize:10, textAlign:"center", marginTop:4 }}>Sin registros</div>}
                       </div>
                     )}
@@ -489,6 +506,12 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               {/* Material compartido */}
               <div>
                 <Label>Material</Label>
+                {terminadaBloqueada ? (
+                  <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color: materialId ? C.text : C.muted, fontSize:13 }}>
+                    {materialId ? (materiales.find(m => m.id === materialId)?.nombre || materialId) + (materialOtro ? ` (${materialOtro})` : "") : "—"}
+                  </div>
+                ) : (
+                <>
                 <Select value={materialId} onChange={e => setMatId(e.target.value)}>
                   <option value="">— Seleccionar —</option>
                   {materiales.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
@@ -497,15 +520,27 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 {materialId === "otro" && (
                   <div style={{ marginTop:8 }}><Label>Especificar material</Label><Input placeholder="Ej. Acero D2" value={materialOtro} onChange={e => setMatOtro(e.target.value)} /></div>
                 )}
+                </>
+                )}
               </div>
 
               {/* Comentarios compartidos */}
-              <div><Label>Comentarios del taller</Label><Textarea rows={3} placeholder="Observaciones, ajustes, detalles…" value={comentarios} onChange={e => setComentSeg(e.target.value)} /></div>
+              <div><Label>Comentarios del taller</Label>
+                {terminadaBloqueada ? (
+                  <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px", color: comentarios ? C.text : C.muted, fontSize:13, whiteSpace:"pre-wrap" }}>
+                    {comentarios || "—"}
+                  </div>
+                ) : (
+                  <Textarea rows={3} placeholder="Observaciones, ajustes, detalles…" value={comentarios} onChange={e => setComentSeg(e.target.value)} />
+                )}
+              </div>
 
               {msg && <div style={{ color: msg.includes("Error") ? C.danger : C.success, fontSize:13 }}>{msg}</div>}
+              {!terminadaBloqueada && (
               <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={guardarSeg} disabled={guardando} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"11px 0", fontWeight:700, cursor:"pointer", transition:"all 0.2s" }}>
                 {guardando ? "Guardando…" : "Guardar seguimiento"}
               </motion.button>
+              )}
               </div>
               )}
             </div>
@@ -526,7 +561,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                     color: orden.autorizada === null || orden.autorizada === undefined ? C.warn : orden.autorizada ? C.success : C.danger }}>
                     {orden.autorizada === null || orden.autorizada === undefined ? "⚠️ Requiere autorización de Gerencia" : orden.autorizada ? "✅ Autorizada" : "❌ Rechazada"}
                   </div>
-                  {(orden.autorizada === null || orden.autorizada === undefined) && (
+                  {(orden.autorizada === null || orden.autorizada === undefined) && !terminadaBloqueada && (
                     <>
                       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
                         <div>
