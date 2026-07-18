@@ -205,6 +205,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     if ((orden.prioridad === "1_seguridad" || orden.prioridad === "2_queja_cliente") && orden.autorizada !== true) { setMsg("Esta orden requiere autorización antes de guardar seguimiento."); return; }
     const tecValidos = tecnicosSeg.filter(t => t.tecnico_id);
     if (!tecValidos.length) { setMsg("Asigna al menos un técnico."); return; }
+    if (!tecValidos.some(t => t.fecha_inicio)) { setMsg("Indica la fecha de inicio para al menos un técnico."); return; }
     if (!materialId && !materialOtro) { setMsg("Selecciona un material."); return; }
     setG(true);
     const { error } = await guardarSeguimiento(orden.no_orden, tecValidos, comentarios, materialId, materialOtro, usuario.id);
