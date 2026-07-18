@@ -510,7 +510,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                             <span style={{ color:C.textSub, fontSize:11, minWidth:80 }}>{new Date(r.fecha + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short"})}</span>
                             <span style={{ color:C.accent, fontWeight:700, fontSize:12 }}>{r.horas}h</span>
                             {r.comentario && <span style={{ color:C.muted, fontSize:10, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.comentario}</span>}
-                            {!terminadaBloqueada && <button onClick={() => handleEliminarRegistroAdmin(r, tecActivo.tecnico_id)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:12, padding:2 }} title="Eliminar">✕</button>}
+                            {superadmin && !terminadaBloqueada && <button onClick={() => handleEliminarRegistroAdmin(r, tecActivo.tecnico_id)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:12, padding:2 }} title="Eliminar">✕</button>}
                           </div>
                         ))}
                         {!terminadaBloqueada && (
