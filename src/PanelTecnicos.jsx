@@ -356,7 +356,7 @@ export default function PanelTecnicos() {
     if (!busqTecId) return;
     setBusqLoad(true);
     setBusqResult(null);
-
+    try {
     const rango = semanaARango(busqAnio, busqSemana);
     const tecnico = tecnicos.find(t => t.id === busqTecId);
 
@@ -375,10 +375,11 @@ export default function PanelTecnicos() {
       return f >= rangoInicio && f <= rangoFin;
     });
 
+    const segsByOrdenLocal = new Map(allSegs.map(s => [s.orden_id, s]));
     const ordenIdsReg = [...new Set(regsEnSemana.map(r => r.orden_id).filter(Boolean))];
     const ordenesConRegistros = ordenIdsReg.map(id => {
       const s = allSegs.find(x => x.orden_id === id && x.tecnico_id === busqTecId);
-      return s ?? segsByOrden.get(id);
+      return s ?? segsByOrdenLocal.get(id);
     }).filter(Boolean);
 
     const ordenesUnicas = [...new Map([...enSemana, ...ordenesConRegistros].map(s => [s.orden_id, s])).values()];
@@ -405,6 +406,7 @@ export default function PanelTecnicos() {
       total: ordenesConHrs.length,
       terminadas: ordenesConHrs.filter(s => s.ordenes_trabajo?.estado === "terminada").length,
     });
+    } catch (err) { console.error("buscarSemana error:", err); }
     setBusqLoad(false);
   };
 
