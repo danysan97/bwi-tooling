@@ -106,6 +106,9 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const [subiendoPlano, setSubPlano] = useState(false);
   const [registrosMap, setRegistrosMap] = useState({}); // { tecnico_id: [...] }
   const [rhForms, setRhForms] = useState({}); // { tecnico_id: { fecha, horas, comentario, agregando } }
+  const [tecnicoTermino, setTecnicoTermino] = useState("");
+  const [nuevoTecnicoId, setNuevoTecId] = useState("");
+  const [nuevoTecnicoHoras, setNuevoTecHoras] = useState("");
 
   useEffect(() => {
     if (!orden) return;
@@ -118,6 +121,9 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setPlanoUrl(null);
     setEditFechaIdx(null);
     setEditando(false);
+    setTecnicoTermino("");
+    setNuevoTecId("");
+    setNuevoTecHoras("");
     if (orden.archivo_url) {
       obtenerUrlPlano(orden.archivo_url).then(({ url }) => setPlanoUrl(url));
     }
@@ -134,7 +140,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
         setMatOtro(data[0]?.material_otro ?? "");
         setComentSeg(data[0]?.comentarios ?? "");
       } else {
-        setTecSeg([{ id: null, tecnico_id: "", fecha_inicio: "", fecha_termino: "", tiempo_real_hrs: "" }]);
+        setTecSeg([]);
         setMatId("");
         setMatOtro("");
         setComentSeg("");
@@ -199,8 +205,13 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const terminadaBloqueada = orden.estado === "terminada" && !editandoOrden;
   const superadmin = usuario?.rol === "superadmin";
 
-  const agregarTecnico = () => {
-    setTecSeg(ts => [...ts, { id: null, tecnico_id: "", fecha_inicio: "", fecha_termino: "", tiempo_real_hrs: "" }]);
+  const agregarTecnicoDesdeBusqueda = () => {
+    if (!nuevoTecnicoId) { setMsg("Selecciona un técnico."); return; }
+    if (tecnicosSeg.some(t => t.tecnico_id === nuevoTecnicoId)) { setMsg("Este técnico ya está asignado."); return; }
+    setTecSeg(ts => [...ts, { id: null, tecnico_id: nuevoTecnicoId, fecha_inicio: "", fecha_termino: "", tiempo_real_hrs: nuevoTecnicoHoras || "" }]);
+    setNuevoTecId("");
+    setNuevoTecHoras("");
+    setMsg("");
   };
   const quitarTecnico = (idx) => {
     setTecSeg(ts => ts.filter((_, i) => i !== idx));
@@ -230,11 +241,13 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     if (!tecValidos.length) { setMsg("Asigna al menos un técnico."); return; }
     if (!tecValidos.some(t => t.fecha_inicio)) { setMsg("Indica la fecha de inicio para al menos un técnico."); return; }
     if (!materialId && !materialOtro) { setMsg("Selecciona un material."); return; }
+    const tieneTermino = tecValidos.some(t => t.fecha_termino);
+    const tecnicoTerminoFinal = tecValidos.length === 1 ? tecValidos[0].tecnico_id : tecnicoTermino;
+    if (tieneTermino && !tecnicoTerminoFinal) { setMsg("Indica qué técnico terminó la orden."); return; }
     setG(true);
     const { error } = await guardarSeguimiento(orden.no_orden, tecValidos, comentarios, materialId, materialOtro, usuario.id);
     if (error) { setG(false); setMsg("Error al guardar."); return; }
     const tieneInicio = tecValidos.some(t => t.fecha_inicio);
-    const tieneTermino = tecValidos.some(t => t.fecha_termino);
     if (tieneInicio && orden.estado === "nueva_orden") {
       await actualizarEstado(orden.no_orden, "en_proceso", usuario.id, null);
     }
@@ -401,9 +414,20 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               {/* Lista de técnicos */}
               {((orden.prioridad !== "1_seguridad" && orden.prioridad !== "2_queja_cliente") || orden.autorizada === true) && (
               <div>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <div style={{ marginBottom:10 }}>
                   <Label>Técnicos asignados ({tecnicosSeg.length})</Label>
-                  {!terminadaBloqueada && <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }} onClick={agregarTecnico} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:9999, padding:"4px 10px", cursor:"pointer", fontSize:11, fontWeight:600, transition:"all 0.2s" }}>+ Agregar técnico</motion.button>}
+                  <div style={{ color:C.textSub, fontSize:11, marginTop:2, marginBottom:8 }}>Seleccione al/los técnicos involucrados en el trabajo</div>
+                  {!terminadaBloqueada && (
+                    <div style={{ display:"flex", gap:6, alignItems:"end" }}>
+                      <div style={{ flex:1 }}>
+                        <Select value={nuevoTecnicoId} onChange={e => setNuevoTecId(e.target.value)}>
+                          <option value="">— Buscar técnico —</option>
+                          {tecnicos.filter(tec => !tecnicosSeg.some(t => t.tecnico_id === tec.id)).map(tec => <option key={tec.id} value={tec.id}>{tec.nombre_completo}</option>)}
+                        </Select>
+                      </div>
+                      <motion.button whileHover={{ scale:1.05 }} whileTap={{ scale:0.95 }} onClick={agregarTecnicoDesdeBusqueda} style={{ background:C.accent, color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", fontWeight:700, cursor:"pointer", fontSize:13, whiteSpace:"nowrap" }}>＋ Agregar</motion.button>
+                    </div>
+                  )}
                 </div>
                 {tecnicosSeg.map((t, idx) => (
                   <div key={idx} style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:10, padding:12, marginBottom:8 }}>
@@ -416,14 +440,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                       <div>
                         <Label>Técnico</Label>
-                        {terminadaBloqueada ? (
-                          <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13 }}>{tecnicos.find(tec => tec.id === t.tecnico_id)?.nombre_completo || "—"}</div>
-                        ) : (
-                        <Select value={t.tecnico_id} onChange={e => actualizarTec(idx, "tecnico_id", e.target.value)}>
-                          <option value="">— Seleccionar —</option>
-                          {tecnicos.map(tec => <option key={tec.id} value={tec.id}>{tec.nombre_completo}</option>)}
-                        </Select>
-                        )}
+                        <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13 }}>{tecnicos.find(tec => tec.id === t.tecnico_id)?.nombre_completo || "—"}</div>
                       </div>
                       <div><Label>Fecha inicio</Label>
                         {terminadaBloqueada ? (
@@ -508,6 +525,19 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                   </div>
                 ))}
                 <div style={{ color:C.textSub, fontSize:12, marginTop:4 }}>Total horas: <strong style={{ color:C.text }}>{horasTotal.toFixed(1)} hrs</strong></div>
+
+                {/* ¿Quién terminó la orden? */}
+                {!terminadaBloqueada && tecnicosSeg.some(t => t.fecha_termino) && tecnicosSeg.length > 0 && (
+                  <div style={{ marginTop:10, background:C.accent+"08", border:`1px solid ${C.accent}33`, borderRadius:8, padding:"10px 14px" }}>
+                    <Label>¿Qué técnico terminó la orden?</Label>
+                    <Select value={tecnicoTermino} onChange={e => setTecnicoTermino(e.target.value)}>
+                      <option value="">— Seleccionar técnico —</option>
+                      {tecnicosSeg.filter(t => t.tecnico_id).map(t => (
+                        <option key={t.tecnico_id} value={t.tecnico_id}>{tecnicos.find(tec => tec.id === t.tecnico_id)?.nombre_completo || t.tecnico_id}</option>
+                      ))}
+                    </Select>
+                  </div>
+                )}
 
               {/* Material compartido */}
               <div>

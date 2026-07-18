@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>BWI TOOLING — Instructivos por Rol</title>
+<style>
+  @page { size: A4; margin: 18mm 15mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; line-height: 1.5; font-size: 13px; }
+  .page { page-break-after: always; padding-bottom: 20px; }
+  .page:last-child { page-break-after: avoid; }
+  .header { background: linear-gradient(135deg, #0f172a, #1e3a5f); color: #fff; padding: 28px 32px; border-radius: 12px; margin-bottom: 24px; }
+  .header h1 { font-size: 22px; margin-bottom: 4px; letter-spacing: 1px; }
+  .header .sub { font-size: 13px; color: #94a3b8; }
+  .header .role-badge { display: inline-block; margin-top: 10px; padding: 4px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .badge-solicitante { background: #60a5fa22; color: #60a5fa; border: 1px solid #60a5fa55; }
+  .badge-tecnico { background: #f59e0b22; color: #f59e0b; border: 1px solid #f59e0b55; }
+  .badge-admin { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e55; }
+  .badge-superadmin { background: #a855f722; color: #a855f7; border: 1px solid #a855f755; }
+  h2 { font-size: 16px; color: #0f172a; margin: 18px 0 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; }
+  h3 { font-size: 13px; color: #475569; margin: 14px 0 6px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th { background: #f1f5f9; color: #334155; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; padding: 8px 12px; border: 1px solid #e2e8f0; }
+  td { padding: 8px 12px; border: 1px solid #e2e8f0; vertical-align: top; }
+  td:first-child { font-weight: 600; color: #1e293b; white-space: nowrap; width: 220px; }
+  .flow { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; margin: 14px 0; }
+  .flow-title { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .flow-steps { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 12px; }
+  .flow-step { background: #1e3a5f; color: #fff; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 11px; }
+  .flow-arrow { color: #94a3b8; font-size: 14px; }
+  .note { background: #fef3c7; border: 1px solid #f59e0b55; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #92400e; margin: 10px 0; }
+  .note strong { color: #78350f; }
+  .tip { background: #eff6ff; border: 1px solid #3b82f655; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #1e40af; margin: 10px 0; }
+  .tip strong { color: #1e3a5f; }
+  .footer { text-align: center; color: #94a3b8; font-size: 10px; margin-top: 20px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+  @media print {
+    body { font-size: 12px; }
+    .page { page-break-after: always; }
+    .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    th, .flow-step, .note, .tip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- SOLICITANTE -->
+<!-- ============================================ -->
+<div class="page">
+  <div class="header">
+    <h1>BWI — TOOLING</h1>
+    <div class="sub">Instructivo de funciones — Sistema de Órdenes de Trabajo</div>
+    <div class="role-badge badge-solicitante">ROL: SOLICITANTE</div>
+  </div>
+
+  <h2>¿Qué es el Portal del Solicitante?</h2>
+  <p>Es el portal donde puedes <strong>solicitar órdenes de trabajo</strong> para tu área, dar seguimiento y comunicarte con el taller.</p>
+
+  <h2>Acceso</h2>
+  <table>
+    <tr><th>Campo</th><th>Descripción</th></tr>
+    <tr><td>No. de empleado</td><td>Tu número de empleado registrado en el sistema</td></tr>
+    <tr><td>PIN</td><td>Tu PIN de acceso (4-6 dígitos)</td></tr>
+  </table>
+
+  <h2>Funciones disponibles</h2>
+  <table>
+    <tr><th>Función</th><th>¿Cómo hacerlo?</th></tr>
+    <tr><td>Solicitar orden de trabajo</td><td>Presiona <strong>"Solicitar orden"</strong> → llena: nombre de pieza, SETC (si aplica), No. plano, No. máquina, cantidad, descripción del problema, prioridad y material → <strong>Enviar</strong></td></tr>
+    <tr><td>Folio de queja (prioridad 2)</td><td>Si seleccionas <strong>Prioridad 2 — Queja de cliente</strong>, aparece el campo <strong>"Folio de queja de cliente"</strong>. Es <strong>obligatorio</strong> para poder enviar la orden.</td></tr>
+    <tr><td>Ver mis órdenes</td><td>En la pantalla principal ves el listado de tus órdenes con estado, prioridad y fechas.</td></tr>
+    <tr><td>Ver detalle de una orden</td><td>Haz <strong>click</strong> en cualquier orden del listado → se abre el detalle con toda la información.</td></tr>
+    <tr><td>Ver plano adjunto</td><td>Si la orden tiene plano, se muestra una <strong>vista previa</strong> directamente en el detalle.</td></tr>
+    <tr><td>Actualizar plano</td><td>En el detalle, usa el botón <strong>"Actualizar plano"</strong> para subir un archivo nuevo (.pdf, .png, .jpg, etc.)</td></tr>
+    <tr><td>Agregar comentario</td><td>En la sección "Agregar comentario", escribe tu mensaje y presiona <strong>Enviar</strong> o la tecla <strong>Enter</strong>.</td></tr>
+    <tr><td>Ver historial</td><td>En la sección <strong>"Historial"</strong> ves todos los eventos de la orden con fecha, tipo y <strong>quién lo realizó</strong>.</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>⚠️ Importante:</strong> Una vez que la orden está <strong>entregada</strong>, no podrás agregar más comentarios.
+  </div>
+
+  <div class="note">
+    <strong>⚠️ Anti-spam:</strong> No puedes comentar dos veces seguidas. Después de tu comentario, debes esperar a que haya un cambio en la orden (asignación, cambio de estado, etc.) para volver a comentar.
+  </div>
+
+  <div class="footer">BWI TOOLING — Instructivo del Solicitante — Página 1</div>
+</div>
+
+<!-- ============================================ -->
+<!-- TÉCNICO -->
+<!-- ============================================ -->
+<div class="page">
+  <div class="header">
+    <h1>BWI — TOOLING</h1>
+    <div class="sub">Instructivo de funciones — Sistema de Órdenes de Trabajo</div>
+    <div class="role-badge badge-tecnico">ROL: TÉCNICO</div>
+  </div>
+
+  <h2>¿Qué es el Portal del Técnico?</h2>
+  <p>Es el portal donde puedes ver las órdenes asignadas, <strong>registrar horas de trabajo</strong> y dar avance de tu trabajo.</p>
+
+  <h2>Acceso</h2>
+  <table>
+    <tr><th>Campo</th><th>Descripción</th></tr>
+    <tr><td>No. de empleado</td><td>Tu número de empleado registrado en el sistema</td></tr>
+    <tr><td>PIN</td><td>Tu PIN de acceso (4-6 dígitos)</td></tr>
+  </table>
+
+  <h2>Funciones disponibles</h2>
+  <table>
+    <tr><th>Función</th><th>¿Cómo hacerlo?</th></tr>
+    <tr><td>Ver mis órdenes asignadas</td><td>En la pantalla principal ves todas las órdenes donde estás asignado como técnico.</td></tr>
+    <tr><td>Ver información de la orden</td><td>Click en una orden → tab <strong>"Información"</strong> → datos generales, solicitante, prioridad, SETC, plano.</td></tr>
+    <tr><td>Registrar horas trabajadas</td><td>Tab <strong>"Mi avance"</strong> → llena Fecha + Horas + Nota (opcional) → presiona el botón <strong>"+"</strong></td></tr>
+    <tr><td>Eliminar registro de horas</td><td>Presiona la <strong>"✕"</strong> junto al registro → confirma la eliminación.</td></tr>
+    <tr><td>Editar fecha término</td><td>En "Mi avance", usa el selector de <strong>Fecha término</strong> (solo disponible cuando la orden está en proceso).</td></tr>
+    <tr><td>Seleccionar material</td><td>En "Mi avance", selecciona el material utilizado de la lista → <strong>"Guardar avance"</strong></td></tr>
+    <tr><td>Agregar comentario</td><td>En "Mi avance", escribe en <strong>"Observaciones"</strong> → <strong>"Guardar avance"</strong></td></tr>
+    <tr><td>Ver historial</td><td>Tab <strong>"Historial"</strong> → ves todos los eventos con fecha y <strong>quién lo hizo</strong>.</td></tr>
+    <tr><td>Imprimir orden</td><td>Botón <strong>"🖨️ Imprimir"</strong> en el header → se abre la vista de impresión.</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>⚠️ Requisito para registrar horas:</strong> El admin debe haber guardado tu asignación (técnico + material + fecha de inicio) primero. Si no ves el formulario, aparecerá un aviso indicándolo.
+  </div>
+
+  <div class="note">
+    <strong>⚠️ Orden terminada:</strong> Cuando la orden pasa a estado "Terminada", se bloquea todo: no puedes editar fechas, registrar horas, ni cambiar material. Solo puedes <strong>ver tu avance</strong> y <strong>agregar comentarios</strong>.
+  </div>
+
+  <h3>Flujo típico</h3>
+  <div class="flow">
+    <div class="flow-steps">
+      <span class="flow-step">Recibes asignación</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Registras horas</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Pones fecha término</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Orden pasa a Terminada</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step"> Admin confirma entrega</span>
+    </div>
+  </div>
+
+  <div class="footer">BWI TOOLING — Instructivo del Técnico — Página 2</div>
+</div>
+
+<!-- ============================================ -->
+<!-- ADMINISTRADOR -->
+<!-- ============================================ -->
+<div class="page">
+  <div class="header">
+    <h1>BWI — TOOLING</h1>
+    <div class="sub">Instructivo de funciones — Sistema de Órdenes de Trabajo</div>
+    <div class="role-badge badge-admin">ROL: ADMINISTRADOR</div>
+  </div>
+
+  <h2>¿Qué es el Dashboard de Administrador?</h2>
+  <p>Es el panel principal desde donde <strong>gestionas todas las órdenes</strong>: asignación, seguimiento, autorización y cierre.</p>
+
+  <h2>Acceso</h2>
+  <table>
+    <tr><th>Campo</th><th>Descripción</th></tr>
+    <tr><td>Usuario</td><td>Tu correo electrónico o <strong>TOOLING01</strong> (usuario maestro)</td></tr>
+    <tr><td>Contraseña</td><td>Tu contraseña de acceso</td></tr>
+  </table>
+
+  <h2>Pantalla Principal — KPIs y Filtros</h2>
+  <table>
+    <tr><th>Función</th><th>¿Cómo hacerlo?</th></tr>
+    <tr><td>Ver resumen general</td><td>Los <strong>KPIs</strong> en la parte superior muestran: Total órdenes, En proceso, Terminadas, Entregadas, Urgentes (pri 1-2) y Sin SETC.</td></tr>
+    <tr><td>Buscar una orden</td><td>Usa el <strong>campo de búsqueda</strong> por nombre, número o solicitante.</td></tr>
+    <tr><td>Filtrar por estado</td><td>Usa las píldoras: Todas, Nuevas, En proceso, Terminadas, Entregadas, Canceladas, Sin SETC.</td></tr>
+    <tr><td>Filtrar por prioridad</td><td>En el panel de la derecha, haz click en una prioridad para filtrar.</td></tr>
+    <tr><td>Exportar reportes</td><td>Tab <strong>"Reportes"</strong> → selecciona rango de fechas → <strong>"Exportar a Excel"</strong></td></tr>
+    <tr><td>Métricas de técnicos</td><td>Tab <strong>"Técnicos"</strong> → productividad, horas registradas, tendencia semanal.</td></tr>
+  </table>
+
+  <h2>Modal de Orden — 4 Tabs</h2>
+
+  <h3>Tab Detalle</h3>
+  <table>
+    <tr><th>Función</th><th>¿Cómo hacerlo?</th></tr>
+    <tr><td>Ver toda la información</td><td>Fechas, SETC, técnico, material, horas, descripción, prioridad, solicitud.</td></tr>
+    <tr><td>Ver plano</td><td>Si hay plano, se muestra <strong>vista previa</strong> inline (PDF o imagen).</td></tr>
+    <tr><td>Actualizar plano</td><td>Botón <strong>"Actualizar plano"</strong> → selecciona archivo → se sube automáticamente.</td></tr>
+    <tr><td>Imprimir</td><td>Botón <strong>"🖨️ Imprimir"</strong> en el header del modal.</td></tr>
+  </table>
+
+  <h3>Tab Seguimiento</h3>
+  <table>
+    <tr><th>Función</th><th>¿Cómo hacerlo?</th></tr>
+    <tr><td>Asignar técnico(s)</td><td><strong>"+ Agregar técnico"</strong> → selecciona del dropdown. Puedes asignar varios.</td></tr>
+    <tr><td>Poner fecha inicio</td><td>Selecciona en el <strong>DatePicker</strong>. Una vez guardada, se <strong>bloquea</strong> (requiere "✎ Editar" + justificación para cambiarla).</td></tr>
+    <tr><td>Seleccionar material</td><td>Elige de la lista o escribe uno nuevo con "Otro…"</td></tr>
+    <tr><td>Registrar horas por técnico</td><td>En la sección <strong>"Registro de horas"</strong> de cada técnico → fecha + horas + nota → <strong>"+"</strong></td></tr>
+    <tr><td>Guardar seguimiento</td><td>Requiere: al menos 1 técnico + <strong>fecha de inicio</strong> + material → <strong>"Guardar seguimiento"</strong></td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>💡 Flujo automático:</strong> Al guardar seguimiento con fecha_inicio → la orden cambia a <strong>"En proceso"</strong>. Al guardar con fecha_termino → cambia a <strong>"Terminada"</strong>.
+  </div>
+
+  <h3>Tab Estado</h3>
+  <table>
+    <tr><th>Función</th><th>¿Cómo hacerlo?</th></tr>
+    <tr><td>Autorizar orden (pri 1-2)</td><td>Llena: Nombre de quien autoriza + Puesto + Comentario → <strong>"✅ Autorizar"</strong>. La orden queda habilitada para seguimiento.</td></tr>
+    <tr><td>Rechazar orden (pri 1-2)</td><td>Llena los mismos campos + <strong>"❌ Rechazar"</strong>. Indica el motivo.</td></tr>
+    <tr><td>Confirmar entrega</td><td>Cuando la orden está terminada, aparece <strong>"¿Entregado?"</strong> → confirma con ✓</td></tr>
+    <tr><td>Agregar comentario</td><td>Escribe en el campo de comentario → <strong>"Comentar"</strong> o Enter.</td></tr>
+  </table>
+
+  <h3>Tab Historial</h3>
+  <table>
+    <tr><th>Función</th><th>Descripción</th></tr>
+    <tr><td>Ver línea de tiempo</td><td>Todos los eventos: recepción, asignación, inicio, comentarios, autorización, horas, etc. con fecha y <strong>quién lo hizo</strong>.</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>⚠️ Orden terminada:</strong> Se bloquea todo el editing (seguimiento, estado). Solo puedes <strong>ver</strong>, <strong>comentar</strong> y <strong>confirmar entrega</strong>.
+  </div>
+
+  <h3>Flujo completo de una orden</h3>
+  <div class="flow">
+    <div class="flow-steps">
+      <span class="flow-step">Recepción</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Autorizar (pri 1-2)</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Asignar tech + fecha + material</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">En proceso</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Técnico registra horas</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Fecha término</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Terminada</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Entregada</span>
+    </div>
+  </div>
+
+  <div class="footer">BWI TOOLING — Instructivo del Administrador — Página 3</div>
+</div>
+
+<!-- ============================================ -->
+<!-- SUPERADMIN -->
+<!-- ============================================ -->
+<div class="page">
+  <div class="header">
+    <h1>BWI — TOOLING</h1>
+    <div class="sub">Instructivo de funciones — Sistema de Órdenes de Trabajo</div>
+    <div class="role-badge badge-superadmin">ROL: SUPERADMINISTRADOR</div>
+  </div>
+
+  <h2>¿Qué es el Superadmin?</h2>
+  <p>Tiene <strong>todas las funciones del Administrador</strong> más el acceso al <strong>Panel de Usuarios</strong> y la capacidad de <strong>editar órdenes terminadas</strong>.</p>
+
+  <h2>Acceso</h2>
+  <table>
+    <tr><th>Campo</th><th>Descripción</th></tr>
+    <tr><td>Usuario</td><td><strong>TOOLING01</strong> (usuario maestro) o tu usuario asignado con rol superadmin</td></tr>
+    <tr><td>Contraseña</td><td>Tu contraseña de acceso</td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>💡 Todo lo que puede hacer un Administrador, lo puede hacer un Superadmin.</strong> Aquí solo se listan las funciones adicionales exclusivas.
+  </div>
+
+  <h2>Funciones exclusivas del Superadmin</h2>
+
+  <h3>Tab Usuarios (gestión de usuarios)</h3>
+  <table>
+    <tr><th>Función</th><th>¿Cómo hacerlo?</th></tr>
+    <tr><td>Ver todos los usuarios</td><td>Tab <strong>"Usuarios"</strong> en el dashboard principal → listado completo con nombre, email, rol y estado.</td></tr>
+    <tr><td>Crear usuario nuevo</td><td>Botón <strong>"+ Nuevo Usuario"</strong> → llena: nombre completo, email, rol (admin / técnico / solicitante), departamento, área. Si es técnico, asigna un <strong>PIN</strong>.</td></tr>
+    <tr><td>Editar usuario</td><td>Click en cualquier usuario del listado → se abren los campos editables: nombre, puesto, departamento, área, PIN.</td></tr>
+    <tr><td>Cambiar PIN de técnico</td><td>En el formulario de edición del técnico, cambia el campo <strong>"PIN"</strong> → Guardar.</td></tr>
+    <tr><td>Eliminar usuario</td><td>En el formulario de edición → botón <strong>"Eliminar"</strong> → confirma. <strong>No se puede eliminar a ti mismo.</strong></td></tr>
+  </table>
+
+  <div class="note">
+    <strong>⚠️ Cuidado:</strong> Eliminar un usuario borra su acceso permanentemente. Asegúrate de que no tenga órdenes activas antes de eliminarlo.
+  </div>
+
+  <h3>Editar orden terminada</h3>
+  <table>
+    <tr><th>Función</th><th>¿Cómo hacerlo?</th></tr>
+    <tr><td>Desbloquear orden terminada</td><td>Al abrir una orden en estado <strong>"Terminada"</strong>, aparece el botón <strong>"✎ Editar orden"</strong> en el header (junto a Imprimir).</td></tr>
+    <tr><td>Editar campos</td><td>Al presionar "✎ Editar orden", se desbloquean todos los campos del modal: seguimiento, material, fechas, comentarios.</td></tr>
+    <tr><td>Salir del modo edición</td><td>Presiona <strong>"✕ Salir edición"</strong> para volver a bloquear todo.</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>⚠️ Nota:</strong> El botón "Editar orden" <strong>solo aparece para Superadmins</strong>. Los Administradores normales ven la orden terminada como solo lectura.
+  </div>
+
+  <h2>Resumen de permisos por rol</h2>
+  <table>
+    <tr><th>Función</th><th>Solicitante</th><th>Técnico</th><th>Admin</th><th>Superadmin</th></tr>
+    <tr><td>Solicitar órdenes</td><td>✅</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>Registrar horas</td><td>—</td><td>✅</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Asignar técnicos</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Autorizar órdenes (pri 1-2)</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Confirmar entrega</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Exportar reportes</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Ver métricas técnicos</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Gestionar usuarios</td><td>—</td><td>—</td><td>—</td><td>✅</td></tr>
+    <tr><td>Editar orden terminada</td><td>—</td><td>—</td><td>—</td><td>✅</td></tr>
+  </table>
+
+  <div class="footer">BWI TOOLING — Instructivo del Superadministrador — Página 4</div>
+</div>
+
+</body>
+</html>

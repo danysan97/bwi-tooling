@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>BWI TOOLING — Recomendaciones para Producción</title>
+<style>
+  @page { size: A4; margin: 18mm 15mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; line-height: 1.55; font-size: 13px; }
+  .page { page-break-after: always; padding-bottom: 16px; }
+  .page:last-child { page-break-after: avoid; }
+  .header { background: linear-gradient(135deg, #0f172a, #1e3a5f); color: #fff; padding: 28px 32px; border-radius: 12px; margin-bottom: 22px; }
+  .header h1 { font-size: 22px; letter-spacing: 1px; }
+  .header .sub { font-size: 13px; color: #94a3b8; margin-top: 2px; }
+  .header .badge { display: inline-block; margin-top: 10px; padding: 4px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #f59e0b22; color: #f59e0b; border: 1px solid #f59e0b55; }
+  h2 { font-size: 16px; color: #0f172a; margin: 18px 0 8px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  h2 .icon { font-size: 18px; }
+  h3 { font-size: 13px; color: #475569; margin: 12px 0 6px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  th { background: #f1f5f9; color: #334155; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; padding: 7px 10px; border: 1px solid #e2e8f0; }
+  td { padding: 7px 10px; border: 1px solid #e2e8f0; vertical-align: top; }
+  td:first-child { font-weight: 600; white-space: nowrap; width: 180px; }
+  .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
+  .card-title { font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  ul { margin-left: 18px; margin-bottom: 8px; }
+  li { margin-bottom: 4px; }
+  .note { background: #fef3c7; border: 1px solid #f59e0b55; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #92400e; margin: 10px 0; }
+  .note strong { color: #78350f; }
+  .alert { background: #fee2e2; border: 1px solid #ef444455; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #991b1b; margin: 10px 0; }
+  .alert strong { color: #7f1d1d; }
+  .tip { background: #eff6ff; border: 1px solid #3b82f655; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #1e40af; margin: 10px 0; }
+  .tip strong { color: #1e3a5f; }
+  .tag-alta { background: #ef4444; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+  .tag-media { background: #f59e0b; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+  .tag-baja { background: #22c55e; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+  .footer { text-align: center; color: #94a3b8; font-size: 10px; margin-top: 18px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+  @media print {
+    body { font-size: 12px; }
+    .page { page-break-after: always; }
+    .header, th, .tag-alta, .tag-media, .tag-baja { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- PÁGINA 1: Hosting + Seguridad + Entorno -->
+<!-- ============================================ -->
+<div class="page">
+  <div class="header">
+    <h1>BWI — TOOLING</h1>
+    <div class="sub">Recomendaciones para Producción — Análisis Técnico</div>
+    <div class="badge"> documento interno — Julio 2026</div>
+  </div>
+
+  <h2><span class="icon">1</span> Hosting y Despliegue</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>Hosting frontend</td><td>Local (npm run dev)</td><td><strong>Vercel o Netlify</strong> (gratis). Conectar el repo de GitHub, cada push a <code>main</code> despliega automáticamente.</td></tr>
+    <tr><td>Dominio</td><td>IP y puerto local</td><td>Comprar dominio (ej. <code>tooling.bwi.com</code>) y apuntarlo al hosting. Actualmente no es profesional ni seguro.</td></tr>
+    <tr><td>HTTPS</td><td>Solo Supabase tiene SSL</td><td><strong>Obligatorio.</strong> Sin HTTPS los navegadores muestran advertencias y los datos viajan en texto plano.</td></tr>
+    <tr><td>Deploy automático</td><td>Manual (git push)</td><td>Configurar deploy automático en Vercel/Netlify al hacer push a <code>main</code>.</td></tr>
+  </table>
+
+  <h2><span class="icon">2</span> Variables de Entorno</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>Credenciales Supabase</td><td>Hardcodeadas en supabase.js</td><td>Mover a archivo <code>.env</code> que <strong>nunca</strong> se suba a GitHub.</td></tr>
+    <tr><td>.env.example</td><td>No existe</td><td>Crear con las variables sin valores para que otros desarrolladores sepan qué configurar.</td></tr>
+    <tr><td>.gitignore</td><td>Verificar que incluya .env</td><td>Asegurar que <code>.env</code> esté en <code>.gitignore</code>.</td></tr>
+  </table>
+
+  <h2><span class="icon">3</span> Seguridad</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>RLS (Row Level Security)</td><td>Parcial (registro_horas tuvo problemas)</td><td>Revisar que <strong>todas</strong> las tablas tengan RLS activo en Supabase: <code>ordenes_trabajo</code>, <code>asignaciones_tecnicos</code>, <code>historial_orden</code>, <code>usuarios</code>, <code>materiales</code>.</td></tr>
+    <tr><td>Rate Limiting</td><td>No existe</td><td>Implementar límite de peticiones para prevenir flooding de comentarios o registros de horas.</td></tr>
+    <tr><td>Validación server-side</td><td>Solo frontend</td><td>Reforzar con <strong>triggers</strong> o funciones en PostgreSQL para que la BD rechace datos inválidos aunque el frontend falle.</td></tr>
+    <tr><td>Autenticación</td><td>PIN (técnicos) / Password (admin)</td><td>El PIN de 4-6 dígitos es débil para producción. Considerar auth con Supabase Auth + JWT.</td></tr>
+  </table>
+
+  <div class="alert">
+    <strong>⚠️ Crítico:</strong> Las credenciales de Supabase hardcodeadas en el código fuente son un riesgo de seguridad. Si el repo es público (o alguien accede al código), puede manipular la BD directamente.
+  </div>
+
+  <h2><span class="icon">4</span> Rendimiento</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>Tamaño del bundle</td><td>~1.4 MB</td><td>Con <strong>lazy loading</strong> (cargar cada portal bajo demanda) se puede bajar a ~300-400 KB iniciales.</td></tr>
+    <tr><td>Consultas a BD</td><td>vista_ordenes carga todo</td><td>Con tablas grandes (500+ órdenes) se volverá lento. Implementar <strong>paginación</strong>.</td></tr>
+    <tr><td>Imágenes/planos</td><td>Se cargan completas</td><td>Usar thumbnails para la lista y cargar la imagen completa solo al abrir el detalle.</td></tr>
+  </table>
+
+  <div class="footer">BWI TOOLING — Recomendaciones para Producción — Página 1</div>
+</div>
+
+<!-- ============================================ -->
+<!-- PÁGINA 2: Móvil + Monitoreo + Backups -->
+<!-- ============================================ -->
+<div class="page">
+  <h2><span class="icon">5</span> Experiencia Móvil / Taller</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>Responsive design</td><td>No optimizado para móvil</td><td>Los técnicos usan celulares en el piso de producción. Probar en pantallas pequeñas: touch targets, scroll, teclado virtual.</td></tr>
+    <tr><td>PWA</td><td>No existe</td><td>Implementar <strong>Progressive Web App</strong> para que los técnicos instalen la "app" en su celular y funcione con señal débil.</td></tr>
+    <tr><td>Touch targets</td><td>Botones pequeños en algunos lugares</td><td>Los botones y campos deben ser de al menos <strong>44x44px</strong> para uso con dedos.</td></tr>
+    <tr><td>Modo offline</td><td>No existe</td><td>Considerar Service Workers para cachear datos críticos cuando no hay internet.</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>💡 Dato clave:</strong> Los técnicos son los usuarios que más usarán el sistema diariamente (registros de horas, avances). Si la experiencia en celular es mala, no lo usarán.
+  </div>
+
+  <h2><span class="icon">6</span> Monitoreo y Errores</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>Error tracking</td><td>No existe</td><td><strong>Sentry</strong> (plan gratis): captura errores de JavaScript en producción y envía alertas por email/Slack.</td></tr>
+    <tr><td>Logs de BD</td><td>No se revisan</td><td>Revisar periódicamente los logs de Supabase para detectar queries lentas o fallos recurrentes.</td></tr>
+    <tr><td>Métricas de uso</td><td>No existen</td><td>Considerar analytics básicos (Google Analytics o similar) para saber qué funciones se usan más.</td></tr>
+    <tr><td>Alertas de uptime</td><td>No existen</td><td>Configurar un servicio de monitoreo (UptimeRobot, gratuito) que avise si el sitio cae.</td></tr>
+  </table>
+
+  <h2><span class="icon">7</span> Backups</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>Supabase Free</td><td>Backups cada 7 días, retención 7 días</td><td>Aceptable para desarrollo. <strong>No recomendado para producción.</strong></td></tr>
+    <tr><td>Supabase Pro ($25/mes)</td><td>No contratado</td><td>Backups <strong>diarios</strong> + point-in-time recovery. <strong>Recomendado</strong> si hay datos importantes.</td></tr>
+    <tr><td>Backups de Storage</td><td>No se hacen</td><td>Los planos/archivos adjuntos también deben respaldarse periódicamente.</td></tr>
+    <tr><td>Plan de recuperación</td><td>No existe</td><td>Documentar pasos para restaurar la BD en caso de fallo catastrófico.</td></tr>
+  </table>
+
+  <h2><span class="icon">8</span> Testing</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>Tests automatizados</td><td>No existen</td><td>Al menos tests de los flujos críticos: crear orden → asignar tech → registrar horas → entregar.</td></tr>
+    <tr><td>Tests manuales</td><td>No documentados</td><td>Crear un <strong>checklist</strong> de pruebas manuales antes de cada deploy.</td></tr>
+    <tr><td>Build verification</td><td>Manual</td><td>Configurar <strong>GitHub Actions</strong> para ejecutar <code>npm run build</code> en cada PR y detectar errores antes de merge.</td></tr>
+  </table>
+
+  <div class="footer">BWI TOOLING — Recomendaciones para Producción — Página 2</div>
+</div>
+
+<!-- ============================================ -->
+<!-- PÁGINA 3: CI/CD + Notificaciones + Docs + BD -->
+<!-- ============================================ -->
+<div class="page">
+  <h2><span class="icon">9</span> CI/CD (Integración y Despliegue Continuo)</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>Pipeline de build</td><td>No existe</td><td>GitHub Actions: ejecutar <code>npm run build</code> en cada PR para detectar errores antes de merge.</td></tr>
+    <tr><td>Deploy automático</td><td>Manual</td><td>Conectar Vercel/Netlify al repo → deploy automático al hacer push a <code>main</code>.</td></tr>
+    <tr><td>Preview deployments</td><td>No existen</td><td>Vercel genera una URL de preview por cada PR para probar cambios antes de merge.</td></tr>
+    <tr><td>Rollback</td><td>No existe</td><td>Vercel permite volver a cualquier versión anterior con un click.</td></tr>
+  </table>
+
+  <h2><span class="icon">10</span> Notificaciones (Futuro)</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>Cambio de estado</td><td>Sin notificación</td><td>Avisar cuando una orden cambia de estado (nueva → en proceso → terminada).</td></tr>
+    <tr><td>Asignación de técnico</td><td>Sin notificación</td><td>Notificar al técnico cuando se le asigna una orden.</td></tr>
+    <tr><td>Entrega confirmada</td><td>Sin notificación</td><td>Avisar al solicitante cuando su orden está lista para recoger.</td></tr>
+    <tr><td>Canales</td><td>—</td><td>Email (Supabase Edge Functions), WhatsApp Business API, o notificaciones push (PWA).</td></tr>
+  </table>
+
+  <h2><span class="icon">11</span> Documentación Técnica</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>README</td><td>No existe o incompleto</td><td>Crear con instrucciones de setup: requisitos, variables de entorno, cómo correr en local.</td></tr>
+    <tr><td>Documentación de BD</td><td>Solo dumps SQL</td><td>Crear diagrama ER y documentar cada tabla, columna y relación.</td></tr>
+    <tr><td>AGENTS.md</td><td>Vacío</td><td>Documentar convenciones del proyecto, comandos útiles, arquitectura.</td></tr>
+    <tr><td>CHANGELOG</td><td>No existe</td><td>Registrar cambios importantes en cada versión para tracking.</td></tr>
+  </table>
+
+  <h2><span class="icon">12</span> Escalabilidad de la Base de Datos</h2>
+  <table>
+    <tr><th>Aspecto</th><th>Estado actual</th><th>Recomendación</th></tr>
+    <tr><td>vista_ordenes</td><td>JOINs pesados en cada consulta</td><td>Con crecimiento, <strong>denormalizar</strong>: guardar <code>solicitante_nombre</code> directamente en <code>ordenes_trabajo</code> en vez de calcularlo con JOIN.</td></tr>
+    <tr><td>historial_orden</td><td>Crecimiento continuo</td><td>Archivar registros viejos (&gt;1 año) en una tabla de respaldo para mantener consultas rápidas.</td></tr>
+    <tr><td>Índices</td><td>Algunos creados</td><td>Revisar queries frecuentes con <code>EXPLAIN ANALYZE</code> y agregar índices donde falten.</td></tr>
+    <tr><td>Conexiones</td><td>Supabase Free: 60 concurrentes</td><td>Si muchos usuarios entran al mismo tiempo, considerar Supabase Pro (más conexiones).</td></tr>
+  </table>
+
+  <div class="footer">BWI TOOLING — Recomendaciones para Producción — Página 3</div>
+</div>
+
+<!-- ============================================ -->
+<!-- PÁGINA 4: Resumen de Prioridad -->
+<!-- ============================================ -->
+<div class="page">
+  <h2><span class="icon">★</span> Resumen de Prioridad</h2>
+  <p style="margin-bottom:12px; color:#475569;">Clasificación de cada recomendación por nivel de impacto y urgencia:</p>
+
+  <h3>🔴 Prioridad Alta — Hacer antes de producción</h3>
+  <table>
+    <tr><th>Recomendación</th><th>Razón</th></tr>
+    <tr><td>Hosting + dominio + HTTPS</td><td>Sin esto no es usable en producción de forma segura y profesional.</td></tr>
+    <tr><td>Variables de entorno (.env)</td><td>Las credenciales hardcodeadas son un riesgo de seguridad crítico.</td></tr>
+    <tr><td>Revisar RLS en todas las tablas</td><td>Protección de datos. Sin RLS, cualquier usuario podría acceder a datos de otros.</td></tr>
+  </table>
+
+  <h3>🟡 Prioridad Media — Hacer en las primeras semanas</h3>
+  <table>
+    <tr><th>Recomendación</th><th>Razón</th></tr>
+    <tr><td>Móvil responsive + PWA</td><td>Los técnicos usan celulares. Si no funciona bien, no lo adoptarán.</td></tr>
+    <tr><td>Sentry para errores</td><td>Detectar problemas automáticamente sin esperar reportes de usuarios.</td></tr>
+    <tr><td>Lazy loading del bundle</td><td>Mejorar tiempo de carga de 1.4 MB a ~300-400 KB iniciales.</td></tr>
+    <tr><td>GitHub Actions (CI)</td><td>Prevenir errores de build antes de llegar a producción.</td></tr>
+  </table>
+
+  <h3>🟢 Prioridad Baja — Hacer con calma</h3>
+  <table>
+    <tr><th>Recomendación</th><th>Razón</th></tr>
+    <tr><td>Tests automatizados</td><td>Prevención de regresiones a largo plazo.</td></tr>
+    <tr><td>Notificaciones</td><td>Mejora la experiencia pero no es urgente.</td></tr>
+    <tr><td>Documentación técnica</td><td>Facilita el mantenimiento y incorporación de nuevos desarrolladores.</td></tr>
+    <tr><td>Backups paid plan</td><td>Depende del volumen de datos y tolerancia a pérdida.</td></tr>
+    <tr><td>Escalabilidad de BD</td><td>Relevante cuando la BD crezca significativamente.</td></tr>
+  </table>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="card-title">Estimación de costos mensuales para producción</div>
+    <table>
+      <tr><th>Servicio</th><th>Plan</th><th>Costo</th></tr>
+      <tr><td>Vercel</td><td>Hobby (proyectos personales)</td><td>Gratis</td></tr>
+      <tr><td>Vercel</td><td>Pro (equipo, dominio custom)</td><td>$20/mes</td></tr>
+      <tr><td>Supabase</td><td>Free</td><td>Gratis</td></tr>
+      <tr><td>Supabase</td><td>Pro (backups diarios, más conexiones)</td><td>$25/mes</td></tr>
+      <tr><td>Sentry</td><td>Free (5K eventos/mes)</td><td>Gratis</td></tr>
+      <tr><td>Dominio</td><td>.com</td><td>~$12/año</td></tr>
+      <tr><td colspan="2"><strong>Total mínimo</strong></td><td><strong>~$37/mes</strong></td></tr>
+      <tr><td colspan="2"><strong>Total con todo</strong></td><td><strong>~$57/mes + dominio</strong></td></tr>
+    </table>
+  </div>
+
+  <div class="tip" style="margin-top:12px;">
+    <strong>💡 Recomendación final:</strong> Arranca con Vercel (gratis) + Supabase Pro ($25) + Sentry (gratis). Son ~$25/mes y cubre el 80% de lo necesario para producción estable y confiable.
+  </div>
+
+  <div class="footer">BWI TOOLING — Recomendaciones para Producción — Página 4</div>
+</div>
+
+</body>
+</html>
