@@ -98,6 +98,9 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   const [nombreAut, setNombreAut] = useState("");
   const [puestoAut, setPuestoAut] = useState("");
   const [planoUrl, setPlanoUrl] = useState(null);
+  const [editandoFechaIdx, setEditFechaIdx] = useState(null);
+  const [editFechaVal, setEditFechaVal] = useState("");
+  const [editFechaComent, setEditFechaComent] = useState("");
   const planoRef = useRef();
   const [subiendoPlano, setSubPlano] = useState(false);
   const [registrosMap, setRegistrosMap] = useState({}); // { tecnico_id: [...] }
@@ -112,6 +115,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setNombreAut("");
     setPuestoAut("");
     setPlanoUrl(null);
+    setEditFechaIdx(null);
     if (orden.archivo_url) {
       obtenerUrlPlano(orden.archivo_url).then(({ url }) => setPlanoUrl(url));
     }
@@ -199,6 +203,21 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
   };
   const actualizarTec = (idx, campo, valor) => {
     setTecSeg(ts => ts.map((t, i) => i === idx ? { ...t, [campo]: valor } : t));
+  };
+
+  const guardarFechaInicio = async (idx) => {
+    const t = tecnicosSeg[idx];
+    if (!editFechaVal) { setMsg("Selecciona una fecha."); return; }
+    if (!editFechaComent.trim()) { setMsg("Escribe el motivo del cambio de fecha."); return; }
+    const fechaAnterior = t.fecha_inicio || "sin fecha";
+    actualizarTec(idx, "fecha_inicio", editFechaVal);
+    if (t.id) {
+      await supabase.from("asignaciones_tecnicos").update({ fecha_inicio: editFechaVal }).eq("id", t.id);
+    }
+    await registrarEvento(orden.no_orden, 'comentario', `Fecha inicio cambiada de ${fechaAnterior} a ${editFechaVal}. Motivo: ${editFechaComent.trim()}`, usuario.id);
+    setEditFechaIdx(null); setEditFechaVal(""); setEditFechaComent("");
+    setMsg("Fecha de inicio actualizada."); onActualizado();
+    setTimeout(() => setMsg(""), 2000);
   };
 
   const guardarSeg = async () => {
@@ -395,7 +414,25 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                           {tecnicos.map(tec => <option key={tec.id} value={tec.id}>{tec.nombre_completo}</option>)}
                         </Select>
                       </div>
-                      <div><Label>Fecha inicio</Label><DatePicker value={t.fecha_inicio} onChange={v => actualizarTec(idx, "fecha_inicio", v)} /></div>
+                      <div><Label>Fecha inicio</Label>
+                        {editandoFechaIdx === idx ? (
+                          <div style={{ display:"grid", gap:6 }}>
+                            <DatePicker value={editFechaVal} onChange={setEditFechaVal} />
+                            <input placeholder="Motivo del cambio…" value={editFechaComent} onChange={e => setEditFechaComent(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 8px" }} />
+                            <div style={{ display:"flex", gap:6 }}>
+                              <button onClick={() => guardarFechaInicio(idx)} style={{ flex:1, background:C.success, color:"#fff", border:"none", borderRadius:6, padding:"5px 0", fontSize:11, fontWeight:700, cursor:"pointer" }}>Guardar</button>
+                              <button onClick={() => { setEditFechaIdx(null); setEditFechaVal(""); setEditFechaComent(""); }} style={{ flex:1, background:C.border, color:C.text, border:"none", borderRadius:6, padding:"5px 0", fontSize:11, fontWeight:600, cursor:"pointer" }}>Cancelar</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                            <div style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color: t.fecha_inicio ? C.text : C.muted, fontSize:13 }}>
+                              {t.fecha_inicio ? new Date(t.fecha_inicio + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "Sin asignar"}
+                            </div>
+                            <motion.button whileHover={{ scale:1.1 }} whileTap={{ scale:0.9 }} onClick={() => { setEditFechaIdx(idx); setEditFechaVal(t.fecha_inicio || ""); setEditFechaComent(""); }} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"6px 8px", fontSize:11, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>✎ Editar</motion.button>
+                          </div>
+                        )}
+                      </div>
                       <div>
                         <Label>Fecha término</Label>
                         {(estado === "en_proceso" || estado === "terminada") ? (

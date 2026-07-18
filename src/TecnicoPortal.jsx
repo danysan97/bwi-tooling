@@ -261,8 +261,10 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
               {msg && <div style={{ background:C.success+"18", border:`1px solid ${C.success}55`, borderRadius:8, padding:"10px 14px", color:C.success, fontSize:13 }}>{msg}</div>}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>
-                  <Label required>Fecha inicio</Label>
-                  <DatePicker value={fechaInicio} onChange={setFInicio} />
+                  <Label>Fecha inicio</Label>
+                  <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"9px 12px", color: fechaInicio ? C.text : C.muted, fontSize:13 }}>
+                    {fechaInicio ? new Date(fechaInicio + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "Sin asignar"}
+                  </div>
                 </div>
                 <div>
                   <Label>Fecha término</Label>
