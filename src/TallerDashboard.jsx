@@ -492,7 +492,7 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                     </div>
 
                     {/* Registros de horas */}
-                    {tecActivo.id && tecActivo.tecnico_id && (
+                    {tecActivo.tecnico_id && (
                       <div style={{ marginTop:10, background:"#f8fafc", border:`1px solid ${C.border}`, borderRadius:8, padding:10 }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                           <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>REGISTRO DE HORAS</span>
@@ -523,11 +523,6 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                         </div>
                         )}
                         {(registrosMap[tecActivo.tecnico_id] ?? []).length === 0 && <div style={{ color:C.muted, fontSize:10, textAlign:"center", marginTop:4 }}>Sin registros</div>}
-                      </div>
-                    )}
-                    {!tecActivo.id && tecActivo.tecnico_id && (
-                      <div style={{ color:C.warn, fontSize:11, marginTop:6, background:C.warn+"12", border:`1px solid ${C.warn}44`, borderRadius:6, padding:"6px 10px", textAlign:"center" }}>
-                        Guarda el seguimiento para poder registrar horas.
                       </div>
                     )}
                   </div>
