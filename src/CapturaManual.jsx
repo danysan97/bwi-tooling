@@ -150,6 +150,7 @@ function FormCaptura({ usuario, onExito }) {
     cantidad:        "1",
     descripcion:     "",
     prioridad:       "",
+    folio_queja:     "",
     // Fechas
     folio_manual:    "",
     fecha_original:  new Date().toISOString().slice(0,10),
@@ -194,6 +195,7 @@ function FormCaptura({ usuario, onExito }) {
     if (!form.descripcion.trim())   e.descripcion   = "Descripción obligatoria.";
     if (!form.cantidad || isNaN(form.cantidad) || Number(form.cantidad) < 1) e.cantidad = "Cantidad inválida.";
     if (!form.prioridad)            e.prioridad     = "Selecciona una prioridad.";
+    if (form.prioridad === "2_queja_cliente" && !form.folio_queja.trim()) e.folio_queja = "Ingresa el folio de la queja de cliente.";
     if (!form.folio_manual || isNaN(form.folio_manual)) e.folio_manual = "Ingresa el número de folio de la papeleta.";
     if (!form.fecha_original)       e.fecha_original = "Ingresa la fecha de la orden original.";
     if (form.fecha_termino && !form.fecha_inicio) e.fecha_inicio = "Si hay fecha de término, también debes indicar la fecha de inicio.";
@@ -239,6 +241,7 @@ function FormCaptura({ usuario, onExito }) {
       es_orden_manual:  true,
       capturado_por_id: usuario.id,
       folio_manual:     form.folio_manual,
+      folio_queja:      form.prioridad === "2_queja_cliente" ? form.folio_queja.trim() : null,
     }, archivo);
 
     if (error || !data) { setEnv(false); setErr({ _global:"Error al guardar. Intenta de nuevo." }); return; }
@@ -547,6 +550,13 @@ function FormCaptura({ usuario, onExito }) {
           ))}
         </div>
         <ErrMsg msg={errores.prioridad} />
+        {form.prioridad === "2_queja_cliente" && (
+          <div style={{ marginTop:10 }}>
+            <Label>Folio de queja de cliente *</Label>
+            <Input placeholder="Ej. QC-2026-0012" value={form.folio_queja} onChange={e => set("folio_queja", e.target.value)} />
+            <ErrMsg msg={errores.folio_queja} />
+          </div>
+        )}
       </Section>
 
       {/* ── Asignación y cierre */}
