@@ -168,9 +168,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
     setRhField(tecnico_id, "agregando", true);
     await agregarRegistroHoras(orden.no_orden, tecnico_id, form.fecha, Number(form.horas), form.comentario || null, usuario.id);
     await registrarEvento(orden.no_orden, 'horas', `${tecnicos.find(x => x.id === tecnico_id)?.nombre_completo || "Técnico"}: ${form.horas}h el ${form.fecha}${form.comentario ? ": " + form.comentario : ""}`, usuario.id);
-    setRhField(tecnico_id, "fecha", new Date().toISOString().slice(0,10)); setRhField(tecnico_id, "horas", ""); setRhField(tecnico_id, "comentario", "");
+    setRhForms(prev => ({ ...prev, [tecnico_id]: { ...getRhForm(tecnico_id), fecha: new Date().toISOString().slice(0,10), horas: "", comentario: "", agregando: false } }));
     await cargarRegistrosAll();
-    setRhField(tecnico_id, "agregando", false);
     onActualizado();
   };
 
