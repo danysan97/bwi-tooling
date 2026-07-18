@@ -491,8 +491,8 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                       </div>
                     </div>
 
-                    {/* Registros de horas */}
-                    {tecActivo.tecnico_id && (
+                    {/* Registros de horas — bloqueados para el 1er técnico hasta tener material + fecha_inicio */}
+                    {tecActivo.tecnico_id && (tecnicosSeg.length > 1 || ((materialId || materialOtro) && tecActivo.fecha_inicio)) && (
                       <div style={{ marginTop:10, background:"#f8fafc", border:`1px solid ${C.border}`, borderRadius:8, padding:10 }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                           <span style={{ color:C.textSub, fontSize:11, fontWeight:600 }}>REGISTRO DE HORAS</span>
