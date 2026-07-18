@@ -426,7 +426,11 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                         )}
                       </div>
                       <div><Label>Fecha inicio</Label>
-                        {editandoFechaIdx === idx ? (
+                        {terminadaBloqueada ? (
+                          <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color: t.fecha_inicio ? C.text : C.muted, fontSize:13 }}>
+                            {t.fecha_inicio ? new Date(t.fecha_inicio + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "Sin asignar"}
+                          </div>
+                        ) : editandoFechaIdx === idx ? (
                           <div style={{ display:"grid", gap:6 }}>
                             <DatePicker value={editFechaVal} onChange={setEditFechaVal} />
                             <input placeholder="Motivo del cambio…" value={editFechaComent} onChange={e => setEditFechaComent(e.target.value)} style={{ ...inputStyle, fontSize:11, padding:"6px 8px" }} />
@@ -435,13 +439,15 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                               <button onClick={() => { setEditFechaIdx(null); setEditFechaVal(""); setEditFechaComent(""); }} style={{ flex:1, background:C.border, color:C.text, border:"none", borderRadius:6, padding:"5px 0", fontSize:11, fontWeight:600, cursor:"pointer" }}>Cancelar</button>
                             </div>
                           </div>
-                        ) : (
+                        ) : t.fecha_inicio ? (
                           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                            <div style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color: t.fecha_inicio ? C.text : C.muted, fontSize:13 }}>
-                              {t.fecha_inicio ? new Date(t.fecha_inicio + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "Sin asignar"}
+                            <div style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13 }}>
+                              {new Date(t.fecha_inicio + "T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})}
                             </div>
-                            {!terminadaBloqueada && <motion.button whileHover={{ scale:1.1 }} whileTap={{ scale:0.9 }} onClick={() => { setEditFechaIdx(idx); setEditFechaVal(t.fecha_inicio || ""); setEditFechaComent(""); }} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"6px 8px", fontSize:11, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>✎ Editar</motion.button>}
+                            <motion.button whileHover={{ scale:1.1 }} whileTap={{ scale:0.9 }} onClick={() => { setEditFechaIdx(idx); setEditFechaVal(t.fecha_inicio); setEditFechaComent(""); }} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"6px 8px", fontSize:11, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>✎ Editar</motion.button>
                           </div>
+                        ) : (
+                          <DatePicker value={t.fecha_inicio} onChange={v => actualizarTec(idx, "fecha_inicio", v)} />
                         )}
                       </div>
                       <div>
