@@ -393,6 +393,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
                         <span style={{ color:C.muted, fontSize:11 }}>{fecha ? fecha.toLocaleDateString("es-MX",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : ""}</span>
                       </div>
                       {ev.detalle && <div style={{ color:C.textSub, fontSize:12, marginTop:3 }}>{ev.detalle}</div>}
+                      {ev.creado_por && <div style={{ color:C.muted, fontSize:10, marginTop:2 }}>Por: {ev.usuarios?.nombre_completo ?? "Sistema"}</div>}
                     </div>
                   </div>
                 );

@@ -248,6 +248,7 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
                             <span style={{ color:C.muted, fontSize:10 }}>{fecha.toLocaleDateString("es-MX")} {fecha.toLocaleTimeString("es-MX", { hour:"2-digit", minute:"2-digit" })}</span>
                           </div>
                           {ev.detalle && <div style={{ color:C.textSub, fontSize:12 }}>{ev.detalle}</div>}
+                          {ev.creado_por && <div style={{ color:C.muted, fontSize:10, marginTop:2 }}>Por: {ev.usuarios?.nombre_completo ?? "Sistema"}</div>}
                         </div>
                       </div>
                     );
