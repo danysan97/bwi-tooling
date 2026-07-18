@@ -174,6 +174,7 @@ export async function crearOrden(datos, archivo = null) {
     capturado_por_id: datos.capturado_por_id ?? null,
     archivo_url,
     archivo_nombre,
+    folio_queja: datos.folio_queja || null,
   }
 
   if (datos.folio_manual) {

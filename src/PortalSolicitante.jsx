@@ -275,7 +275,7 @@ function FormOrden({ usuario, onExito, onCancelar }) {
   const [form, setForm] = useState({
     nombre_solicitante: esNombreGenerico ? "" : (usuario.nombre_completo ?? ""),
     nombre_pieza:"", setc_numero:"", no_plano:"", no_maquina:"",
-    cantidad:"", descripcion:"", prioridad:"",
+    cantidad:"", descripcion:"", prioridad:"", folio_queja:"",
     depto: usuario.departamento || "",
     linea_celda: "",
     area_sel: usuario.area_codigo || "",
@@ -292,6 +292,7 @@ function FormOrden({ usuario, onExito, onCancelar }) {
     if (!form.descripcion.trim())   e.descripcion   = "Describe el trabajo.";
     if (!form.cantidad || isNaN(form.cantidad) || Number(form.cantidad) < 1) e.cantidad = "Cantidad inválida.";
     if (!form.prioridad)            e.prioridad     = "Selecciona una prioridad.";
+    if (form.prioridad === "2_queja_cliente" && !form.folio_queja.trim()) e.folio_queja = "Ingresa el folio de la queja de cliente.";
     if (!form.depto.trim())         e.depto         = "Indica el departamento.";
     return e;
   };
@@ -319,6 +320,7 @@ function FormOrden({ usuario, onExito, onCancelar }) {
       cantidad:       form.cantidad,
       descripcion:    form.descripcion,
       prioridad:      form.prioridad,
+      folio_queja:    form.prioridad === "2_queja_cliente" ? form.folio_queja.trim() : null,
     }, archivo);
 
     setEnv(false);
@@ -437,6 +439,13 @@ function FormOrden({ usuario, onExito, onCancelar }) {
               ))}
             </div>
             <ErrMsg msg={errores.prioridad} />
+            {form.prioridad === "2_queja_cliente" && (
+              <div style={{ marginTop:10 }}>
+                <Label>Folio de queja de cliente *</Label>
+                <Input placeholder="Ej. QC-2026-0012" value={form.folio_queja} onChange={e => set("folio_queja", e.target.value)} />
+                <ErrMsg msg={errores.folio_queja} />
+              </div>
+            )}
             {(form.prioridad==="1_seguridad"||form.prioridad==="2_queja_cliente") && (
               <div style={{ background:C.warn+"18", border:`1px solid ${C.warn}55`, borderRadius:8, padding:"10px 14px", fontSize:13, color:C.warn, marginTop:8 }}>
                 ⚠️ Las urgencias deben ser autorizadas por Gerencia de Mantenimiento.
