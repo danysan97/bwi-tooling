@@ -106,6 +106,11 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
     e.target.value = "";
   };
 
+  const ordenEntregada = ordenSel?.estado === "terminada" && ordenSel?.entregada;
+
+  const ultimoEvento = historial.length > 0 ? historial[historial.length - 1] : null;
+  const spamBloqueado = ultimoEvento && ultimoEvento.evento_tipo === "comentario" && ultimoEvento.creado_por === usuario.id;
+
   const onAgregarComentario = async () => {
     if (!nuevoCom.trim() || !ordenSel) return;
     setSubCom(true);
@@ -214,8 +219,14 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
             </div>
 
             {/* Comentario rápido */}
+            {!ordenEntregada ? (
             <div style={{ marginTop:16, borderTop:`1px solid ${C.border}`, paddingTop:16 }}>
               <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Agregar comentario</div>
+              {spamBloqueado ? (
+                <div style={{ background:C.warn+"18", border:`1px solid ${C.warn}55`, borderRadius:8, padding:"10px 14px", color:C.warn, fontSize:12, textAlign:"center" }}>
+                  Ya comentaste. Espera a que haya un nuevo cambio en la orden para volver a comentar.
+                </div>
+              ) : (
               <div style={{ display:"flex", gap:8 }}>
                 <input value={nuevoCom} onChange={e => setNuevoCom(e.target.value)} onKeyDown={e => e.key === "Enter" && onAgregarComentario()}
                   placeholder="Escribe un comentario…" style={{ flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"8px 12px", color:C.text, fontSize:13, outline:"none" }} />
@@ -224,7 +235,13 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
                   {subiendoCom ? "…" : "Enviar"}
                 </button>
               </div>
+              )}
             </div>
+            ) : (
+              <div style={{ marginTop:16, borderTop:`1px solid ${C.border}`, paddingTop:16, textAlign:"center" }}>
+                <div style={{ color:C.muted, fontSize:12 }}>La orden ya fue entregada. No se pueden agregar más comentarios.</div>
+              </div>
+            )}
 
             {/* Historial */}
             <div style={{ marginTop:20, borderTop:`1px solid ${C.border}`, paddingTop:16 }}>
