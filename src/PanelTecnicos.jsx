@@ -53,7 +53,7 @@ function getSemanaActual() {
   const hoy   = new Date();
   const dia   = hoy.getDay() || 7;
   const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - dia + 1); lunes.setHours(0,0,0,0);
-  const vier  = new Date(lunes); vier.setDate(lunes.getDate() + 4); vier.setHours(23,59,59,999);
+  const vier  = new Date(lunes); vier.setDate(lunes.getDate() + 6); vier.setHours(23,59,59,999);
   return { inicio: lunes, fin: vier };
 }
 
