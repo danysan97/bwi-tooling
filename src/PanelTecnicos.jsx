@@ -72,7 +72,7 @@ function semanaARango(anio, semana) {
   lunesInicio.setDate(enero1.getDate() - diaSemana + 1 + (semana - 1) * 7);
   lunesInicio.setHours(0, 0, 0, 0);
   const viernesFin = new Date(lunesInicio);
-  viernesFin.setDate(lunesInicio.getDate() + 4);
+  viernesFin.setDate(lunesInicio.getDate() + 6);
   viernesFin.setHours(23, 59, 59, 999);
   return { inicio: lunesInicio, fin: viernesFin };
 }
