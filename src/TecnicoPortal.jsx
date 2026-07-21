@@ -321,7 +321,7 @@ function DetalleOrden({ orden, segRow, usuario, materiales, onCerrar, onGuardado
                         <span style={{ color:C.accent, fontWeight:700, fontSize:13, minWidth:40 }}>{r.horas}h</span>
                         {r.comentario && <span style={{ color:C.muted, fontSize:11, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.comentario}</span>}
                         {r.usuarios?.nombre_completo && <span style={{ color:C.muted, fontSize:10, marginLeft:"auto" }}>{r.usuarios.nombre_completo}</span>}
-                        {orden.estado !== "terminada" && <button onClick={() => handleEliminarRegistro(r)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:14, padding:2 }} title="Eliminar">✕</button>}
+                        {orden.estado !== "terminada" && usuario.rol === "superadmin" && <button onClick={() => handleEliminarRegistro(r)} style={{ background:"none", border:"none", color:C.danger, cursor:"pointer", fontSize:14, padding:2 }} title="Eliminar">✕</button>}
                       </div>
                     ))}
                   </div>
