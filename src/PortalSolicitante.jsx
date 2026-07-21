@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { crearOrden, obtenerMisOrdenes, obtenerAreas, supabase, cargarHistorial, parseFechaUTC, actualizarPlano, obtenerUrlPlano, agregarComentarioHistorial, registrarEvento } from "./lib/supabase";
 import ImprimirOrden from "./ImprimirOrden.jsx";
+import Paginacion from "./Paginacion.jsx";
 
 const C = {
   bg:"#0F1117", surface:"#181C25", border:"#242935",
@@ -63,6 +64,8 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
   const [imprimiendo, setImp] = useState(false);
   const [historial, setHistorial] = useState([]);
   const [planoUrl, setPlanoUrl]   = useState(null);
+  const [pagina, setPagina]     = useState(1);
+  const [porPagina, setPorPag]  = useState(30);
   const planoRef  = useRef();
   const [nuevoCom, setNuevoCom]   = useState("");
   const [subiendoPlano, setSubPlano] = useState(false);
@@ -138,21 +141,24 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
           ? <div style={{ textAlign:"center", padding:60, color:C.muted }}>Cargando…</div>
           : ordenes.length === 0
             ? <div style={{ textAlign:"center", padding:60, color:C.muted }}>Aún no tienes órdenes. ¡Crea la primera!</div>
-            : ordenes.map(o => (
-              <div key={o.no_orden} onClick={() => setOS(o)} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"16px 20px", marginBottom:10, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10, cursor:"pointer" }}
-                onMouseEnter={e => e.currentTarget.style.borderColor=C.accent}
-                onMouseLeave={e => e.currentTarget.style.borderColor=C.border}>
-                <div>
-                  <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
-                    <span style={{ color:C.accent, fontWeight:700, fontSize:15 }}>#{o.no_orden}</span>
-                    <span style={{ background:PRIO_COLOR[o.prioridad]+"22", color:PRIO_COLOR[o.prioridad], border:`1px solid ${PRIO_COLOR[o.prioridad]}55`, borderRadius:6, padding:"1px 8px", fontSize:11, fontWeight:600 }}>{PRIO_LABEL[o.prioridad]}</span>
+            : <>
+              {(porPagina >= ordenes.length ? ordenes : ordenes.slice((pagina - 1) * porPagina, pagina * porPagina)).map(o => (
+                <div key={o.no_orden} onClick={() => setOS(o)} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"16px 20px", marginBottom:10, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10, cursor:"pointer" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor=C.accent}
+                  onMouseLeave={e => e.currentTarget.style.borderColor=C.border}>
+                  <div>
+                    <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+                      <span style={{ color:C.accent, fontWeight:700, fontSize:15 }}>#{o.no_orden}</span>
+                      <span style={{ background:PRIO_COLOR[o.prioridad]+"22", color:PRIO_COLOR[o.prioridad], border:`1px solid ${PRIO_COLOR[o.prioridad]}55`, borderRadius:6, padding:"1px 8px", fontSize:11, fontWeight:600 }}>{PRIO_LABEL[o.prioridad]}</span>
+                    </div>
+                    <div style={{ color:C.text, fontWeight:600, marginBottom:2 }}>{o.nombre_pieza}</div>
+                    <div style={{ color:C.muted, fontSize:12 }}>{o.fecha_solicitud?.slice(0,10)} · Técnico: {o.tecnico_nombre ?? "Pendiente"}</div>
                   </div>
-                  <div style={{ color:C.text, fontWeight:600, marginBottom:2 }}>{o.nombre_pieza}</div>
-                  <div style={{ color:C.muted, fontSize:12 }}>{o.fecha_solicitud?.slice(0,10)} · Técnico: {o.tecnico_nombre ?? "Pendiente"}</div>
+                  <span style={{ background:(o.estado==="terminada"&&o.entregada?"#8B5CF6":ESTADO_COLOR[o.estado])+"22", color:o.estado==="terminada"&&o.entregada?"#8B5CF6":ESTADO_COLOR[o.estado], border:`1px solid ${(o.estado==="terminada"&&o.entregada?"#8B5CF6":ESTADO_COLOR[o.estado])}55`, borderRadius:8, padding:"6px 14px", fontSize:13, fontWeight:700 }}>{o.estado==="terminada"&&o.entregada?"Entregada":ESTADO_LABEL[o.estado]}</span>
                 </div>
-                <span style={{ background:(o.estado==="terminada"&&o.entregada?"#8B5CF6":ESTADO_COLOR[o.estado])+"22", color:o.estado==="terminada"&&o.entregada?"#8B5CF6":ESTADO_COLOR[o.estado], border:`1px solid ${(o.estado==="terminada"&&o.entregada?"#8B5CF6":ESTADO_COLOR[o.estado])}55`, borderRadius:8, padding:"6px 14px", fontSize:13, fontWeight:700 }}>{o.estado==="terminada"&&o.entregada?"Entregada":ESTADO_LABEL[o.estado]}</span>
-              </div>
-            ))
+              ))}
+              <Paginacion total={ordenes.length} pagina={pagina} porPagina={porPagina} onCambio={setPagina} onPorPaginaChange={setPorPag} />
+            </>
         }
       </div>
 

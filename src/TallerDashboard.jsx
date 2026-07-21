@@ -6,6 +6,7 @@ import PanelTecnicos from "./PanelTecnicos.jsx";
 import PanelUsuarios from "./PanelUsuarios.jsx";
 import ExportarReportes from "./ExportarReportes.jsx";
 import FormOrdenAdmin from "./FormOrdenAdmin.jsx";
+import Paginacion from "./Paginacion.jsx";
 import {
   supabase,
   obtenerSesion, cerrarSesion,
@@ -773,6 +774,10 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
   const [ordenSel, setOS]     = useState(null);
   const [solicitando, setSol] = useState(false);
   const [exportando, setExp]  = useState(false);
+  const [pagOrd, setPagOrd]   = useState(1);
+  const [porPagOrd, setPPOrd] = useState(30);
+  const [pagPrio, setPagPrio] = useState(1);
+  const [porPagPrio, setPPPrio] = useState(30);
 
   const cargar = async () => {
     setLoad(true);
@@ -791,6 +796,8 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
   };
 
   useEffect(() => { cargar(); }, []);
+  useEffect(() => { setPagOrd(1); }, [filtroEst, busqueda]);
+  useEffect(() => { setPagPrio(1); }, [filtroPrio]);
 
   const filtradas = ordenes.filter(o => {
     let matchEst = filtroEst === "todos" || o.estado === filtroEst;
@@ -893,6 +900,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
               })}
             </div>
             {loading ? <Spinner /> : (
+              <>
               <div style={{ overflowX:"auto" }}>
                 <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                   <thead>
@@ -903,7 +911,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                     </tr>
                   </thead>
                   <tbody>
-                    {filtradas.map((o,i) => (
+                    {(porPagOrd >= filtradas.length ? filtradas : filtradas.slice((pagOrd - 1) * porPagOrd, pagOrd * porPagOrd)).map((o,i) => (
                       <tr key={o.no_orden} onClick={() => setOS(o)} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66", cursor:"pointer", transition:"background 0.15s" }}
                         onMouseEnter={e => e.currentTarget.style.background=C.accent+"11"}
                         onMouseLeave={e => e.currentTarget.style.background=i%2===0?"transparent":C.bg+"66"}>
@@ -925,6 +933,8 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                   </tbody>
                 </table>
               </div>
+              <Paginacion total={filtradas.length} pagina={pagOrd} porPagina={porPagOrd} onCambio={setPagOrd} onPorPaginaChange={setPPOrd} />
+              </>
             )}
           </Card>
         )}
@@ -990,6 +1000,7 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
             {/* Tabla */}
             <Card style={{ padding:0 }}>
               {loading ? <Spinner /> : (
+                <>
                 <div style={{ overflowX:"auto" }}>
                   <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                     <thead>
@@ -1000,10 +1011,12 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                       </tr>
                     </thead>
                     <tbody>
-                      {ordenes
-                        .filter(o => filtroPrio === "todas" || o.prioridad === filtroPrio)
-                        .sort((a, b) => (a.prioridad || "").localeCompare(b.prioridad || "") || (b.no_orden - a.no_orden))
-                        .map((o, i) => (
+                      {(() => {
+                        const prioFiltradas = ordenes
+                          .filter(o => filtroPrio === "todas" || o.prioridad === filtroPrio)
+                          .sort((a, b) => (a.prioridad || "").localeCompare(b.prioridad || "") || (b.no_orden - a.no_orden));
+                        const prioPag = porPagPrio >= prioFiltradas.length ? prioFiltradas : prioFiltradas.slice((pagPrio - 1) * porPagPrio, pagPrio * porPagPrio);
+                        return prioPag.map((o, i) => (
                           <tr key={o.no_orden} onClick={() => setOS(o)} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66", cursor:"pointer", transition:"background 0.15s" }}
                             onMouseEnter={e => e.currentTarget.style.background=C.accent+"11"}
                             onMouseLeave={e => e.currentTarget.style.background=i%2===0?"transparent":C.bg+"66"}>
@@ -1018,13 +1031,19 @@ export default function App({ usuario: usuarioProp, onCapturarManual, onSalir })
                             <td style={{ padding:"10px 14px", color:C.textSub }}>{o.tecnico_nombre ?? "—"}</td>
                             <td style={{ padding:"10px 14px", color:C.textSub }}>{o.tiempo_real_hrs ?? "—"}</td>
                           </tr>
-                        ))}
+                        ));
+                      })()}
                       {(filtroPrio === "todas" ? ordenes : ordenes.filter(o => o.prioridad === filtroPrio)).length === 0 && (
                         <tr><td colSpan={10} style={{ padding:40, textAlign:"center", color:C.muted }}>Sin órdenes para esta prioridad.</td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
+                {(() => {
+                  const totalPrio = (filtroPrio === "todas" ? ordenes : ordenes.filter(o => o.prioridad === filtroPrio)).length;
+                  return <Paginacion total={totalPrio} pagina={pagPrio} porPagina={porPagPrio} onCambio={setPagPrio} onPorPaginaChange={setPPPrio} />;
+                })()}
+                </>
               )}
             </Card>
           </div>

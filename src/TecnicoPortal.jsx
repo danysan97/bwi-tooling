@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase, cerrarSesion, obtenerOrdenesTecnico, obtenerPerfilTecnico, cargarHistorial, obtenerMateriales, obtenerAreas, obtenerUrlPlano, registrarEvento, parseFechaUTC, obtenerLogoBase64, agregarRegistroHoras, eliminarRegistroHoras, obtenerRegistrosHoras } from "./lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import DatePicker from "./DatePicker.jsx";
+import Paginacion from "./Paginacion.jsx";
 import { C, PRIO_COLOR, PRIO_LABEL, EST_COLOR, EST_LABEL, modalScale, fadeIn, slideUp, glassSurface, glowAccent } from "./theme";
 
 const HRS_DIA    = { primero: 8,   segundo: 7.5  };
@@ -453,8 +454,11 @@ export default function TecnicoPortal({ usuario, onSalir }) {
   const [selMes, setSelMes]       = useState(hoy.getMonth());
   const [selAnio, setSelAnio]     = useState(hoy.getFullYear());
   const [modoPeriodo, setModoPeriodo] = useState("semana");
+  const [pagina, setPagina]     = useState(1);
+  const [porPagina, setPorPag]  = useState(30);
 
   useEffect(() => { cargar(); }, []);
+  useEffect(() => { setPagina(1); }, [filtro]);
 
   const cargar = async () => {
     setLoad(true);
@@ -596,6 +600,7 @@ export default function TecnicoPortal({ usuario, onSalir }) {
             {/* Tabla */}
             <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, overflow:"hidden" }}>
               {loading ? <div style={{ padding:40, textAlign:"center", color:C.muted }}>Cargando…</div> : (
+                <>
                 <div style={{ overflowX:"auto", maxHeight:"65vh", overflowY:"auto" }}>
                   <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                     <thead>
@@ -606,7 +611,7 @@ export default function TecnicoPortal({ usuario, onSalir }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {filtradas.map((s, i) => {
+                      {(porPagina >= filtradas.length ? filtradas : filtradas.slice((pagina - 1) * porPagina, pagina * porPagina)).map((s, i) => {
                         const o = s.ordenes_trabajo;
                         if (!o) return null;
                         const prioColor = PRIO_COLOR[o.prioridad] ?? C.muted;
@@ -639,6 +644,8 @@ export default function TecnicoPortal({ usuario, onSalir }) {
                     </tbody>
                   </table>
                 </div>
+                <Paginacion total={filtradas.length} pagina={pagina} porPagina={porPagina} onCambio={setPagina} onPorPaginaChange={setPorPag} />
+                </>
               )}
             </div>
           </>
