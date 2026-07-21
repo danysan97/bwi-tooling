@@ -213,6 +213,10 @@ export default function PanelTecnicos() {
   const [busqResult, setBusqResult]   = useState(null);
   const [busqLoading, setBusqLoad]    = useState(false);
 
+  // Selector de semana para la tabla principal
+  const [tablaSemana, setTablaSemana] = useState(getNumeroSemana(hoy));
+  const [tablaAnio, setTablaAnio]     = useState(hoy.getFullYear());
+
   useEffect(() => { cargar(); }, []);
 
   const cargar = async () => {
@@ -422,7 +426,7 @@ export default function PanelTecnicos() {
         <div style={{ display:"flex", alignItems:"baseline", gap:12 }}>
           <div style={{ color:C.text, fontWeight:700, fontSize:18 }}>Panel de Técnicos</div>
           <div style={{ color:C.textSub, fontWeight:600, fontSize:14 }}>
-            Semana {getNumeroSemana(new Date())} · {new Date().toLocaleDateString("es-MX", { month:"long", year:"numeric" })}
+            {periodo === "semana" ? `Semana ${tablaSemana} · ${tablaAnio}` : periodo === "mes" ? `${new Date().toLocaleDateString("es-MX", { month:"long", year:"numeric" })}` : "Histórico"}
           </div>
         </div>
         <div style={{ display:"flex", gap:4, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:4 }}>
@@ -436,8 +440,23 @@ export default function PanelTecnicos() {
 
       {/* Tabla de métricas */}
       <Card style={{ padding:0, marginBottom:16 }}>
-        <div style={{ padding:"12px 20px", borderBottom:`1px solid ${C.border}`, fontWeight:600, fontSize:14 }}>
-          Resumen de desempeño — {periodo === "semana" ? "Semana actual" : periodo === "mes" ? "Mes actual" : "Histórico"}
+        <div style={{ padding:"12px 20px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10 }}>
+          <span style={{ fontWeight:600, fontSize:14 }}>
+            Resumen de desempeño — {periodo === "semana" ? `Semana ${tablaSemana}` : periodo === "mes" ? "Mes actual" : "Histórico"}
+          </span>
+          {periodo === "semana" && (
+            <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+              <button onClick={() => { if (tablaSemana > 1) { setTablaSemana(tablaSemana - 1); } else { setTablaAnio(tablaAnio - 1); setTablaSemana(52); } }} style={{ background:C.border, color:C.text, border:"none", borderRadius:6, width:28, height:28, cursor:"pointer", fontWeight:700, fontSize:14 }}>‹</button>
+              <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+                <span style={{ fontSize:12, color:C.textSub }}>Sem</span>
+                <input type="number" min={1} max={53} value={tablaSemana} onChange={e => setTablaSemana(Math.max(1, Math.min(53, Number(e.target.value) || 1)))} style={{ width:48, background:C.bg, border:`1px solid ${C.border}`, borderRadius:6, padding:"4px 6px", textAlign:"center", fontSize:12, color:C.text }} />
+                <span style={{ fontSize:12, color:C.textSub }}>Año</span>
+                <input type="number" min={2020} max={2030} value={tablaAnio} onChange={e => setTablaAnio(Number(e.target.value) || 2026)} style={{ width:60, background:C.bg, border:`1px solid ${C.border}`, borderRadius:6, padding:"4px 6px", textAlign:"center", fontSize:12, color:C.text }} />
+              </div>
+              <button onClick={() => { setTablaSemana(getNumeroSemana(new Date())); setTablaAnio(new Date().getFullYear()); }} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"4px 10px", cursor:"pointer", fontWeight:600, fontSize:11 }}>Hoy</button>
+              <button onClick={() => { if (tablaSemana < 52) { setTablaSemana(tablaSemana + 1); } else { setTablaAnio(tablaAnio + 1); setTablaSemana(1); } }} style={{ background:C.border, color:C.text, border:"none", borderRadius:6, width:28, height:28, cursor:"pointer", fontWeight:700, fontSize:14 }}>›</button>
+            </div>
+          )}
         </div>
         <div style={{ overflowX:"auto" }}>
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
@@ -449,13 +468,38 @@ export default function PanelTecnicos() {
               </tr>
             </thead>
             <tbody>
-              {tecnicos.map((t,i) => {
+              {(() => {
+                const rangoSel = tablaSemana && tablaAnio ? semanaARango(tablaAnio, tablaSemana) : null;
+                const rangoInicio = rangoSel ? rangoSel.inicio.toISOString().slice(0,10) : null;
+                const rangoFin = rangoSel ? rangoSel.fin.toISOString().slice(0,10) : null;
+                return tecnicos.map((t,i) => {
                 const m = metricas[t.id] ?? {};
-                const hrsDisp = periodo === "semana" ? m.hrsSem : periodo === "mes" ? m.hrsMes : null;
-                const hrsTrab = periodo === "semana" ? m.hrsTrabSem : periodo === "mes" ? m.hrsTrabMes : m.hrsTotal;
-                const aprov   = periodo === "semana" ? m.aprovSem : periodo === "mes" ? m.aprovMes : null;
-                const ords    = periodo === "semana" ? m.ordenesSem : periodo === "mes" ? m.ordenesMes : m.ordenesTotal;
-                const terms   = periodo === "semana" ? m.terminadasSem : periodo === "mes" ? m.terminadasMes : m.terminadasTotal;
+                let hrsDisp, hrsTrab, aprov, ords, terms;
+                if (periodo === "semana" && rangoInicio) {
+                  const hrsSem = HRS_SEMANA[t.turno ?? "primero"];
+                  const misRegs = allRegs.filter(r => r.tecnico_id === t.id);
+                  const regsSel = misRegs.filter(r => r.fecha >= rangoInicio && r.fecha <= rangoFin);
+                  hrsTrab = parseFloat(regsSel.reduce((s, r) => s + (Number(r.horas) || 0), 0).toFixed(1));
+                  hrsDisp = hrsSem;
+                  aprov = hrsSem > 0 ? Math.round((hrsTrab / hrsSem) * 100) : 0;
+                  const ordenIdsReg = [...new Set(regsSel.map(r => r.orden_id).filter(Boolean))];
+                  const segsByOrdenLocal = new Map(allSegs.map(s => [s.orden_id, s]));
+                  const enSemanaFromRegs = ordenIdsReg.map(id => segsByOrdenLocal.get(id)).filter(Boolean);
+                  const misSegs = allSegs.filter(s => s.tecnico_id === t.id);
+                  const enSemanaFecha = misSegs.filter(s => {
+                    const f = s.fecha_inicio;
+                    return f && f.slice(0,10) >= rangoInicio && f.slice(0,10) <= rangoFin;
+                  });
+                  const ordenesUnicas = [...new Map([...enSemanaFecha, ...enSemanaFromRegs].map(s => [s.orden_id, s])).values()];
+                  ords = ordenesUnicas.length;
+                  terms = ordenesUnicas.filter(s => s.ordenes_trabajo?.estado === "terminada").length;
+                } else {
+                  hrsDisp = periodo === "mes" ? m.hrsMes : null;
+                  hrsTrab = periodo === "mes" ? m.hrsTrabMes : m.hrsTotal;
+                  aprov   = periodo === "mes" ? m.aprovMes : null;
+                  ords    = periodo === "mes" ? m.ordenesMes : m.ordenesTotal;
+                  terms   = periodo === "mes" ? m.terminadasMes : m.terminadasTotal;
+                }
 
                 return (
                   <tr key={t.id} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66" }}>
@@ -484,7 +528,7 @@ export default function PanelTecnicos() {
                     </td>
                   </tr>
                 );
-              })}
+              });})()}
             </tbody>
           </table>
         </div>
