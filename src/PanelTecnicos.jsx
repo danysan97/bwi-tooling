@@ -418,6 +418,34 @@ export default function PanelTecnicos() {
 
   const aprovColor = pct => pct >= 80 ? C.success : pct >= 50 ? C.warn : C.danger;
 
+  // Métricas de la semana seleccionada para la tabla y gráficas
+  const tablaRango = tablaSemana && tablaAnio ? semanaARango(tablaAnio, tablaSemana) : null;
+  const tablaRangoInicio = tablaRango ? tablaRango.inicio.toISOString().slice(0,10) : null;
+  const tablaRangoFin = tablaRango ? tablaRango.fin.toISOString().slice(0,10) : null;
+  const metricasTabla = {};
+  tecnicos.forEach(t => {
+    const hrsSem = HRS_SEMANA[t.turno ?? "primero"];
+    const misRegs = allRegs.filter(r => r.tecnico_id === t.id);
+    const regsSel = tablaRangoInicio ? misRegs.filter(r => r.fecha >= tablaRangoInicio && r.fecha <= tablaRangoFin) : [];
+    const hrsTrab = parseFloat(regsSel.reduce((s, r) => s + (Number(r.horas) || 0), 0).toFixed(1));
+    const ordenIdsReg = [...new Set(regsSel.map(r => r.orden_id).filter(Boolean))];
+    const segsByOrdenLocal = new Map(allSegs.map(s => [s.orden_id, s]));
+    const enSemanaFromRegs = ordenIdsReg.map(id => segsByOrdenLocal.get(id)).filter(Boolean);
+    const misSegs = allSegs.filter(s => s.tecnico_id === t.id);
+    const enSemanaFecha = misSegs.filter(s => {
+      const f = s.fecha_inicio;
+      return f && f.slice(0,10) >= tablaRangoInicio && f.slice(0,10) <= tablaRangoFin;
+    });
+    const ordenesUnicas = [...new Map([...enSemanaFecha, ...enSemanaFromRegs].map(s => [s.orden_id, s])).values()];
+    metricasTabla[t.id] = {
+      hrsSem,
+      hrsTrab,
+      aprov: hrsSem > 0 ? Math.round((hrsTrab / hrsSem) * 100) : 0,
+      ords: ordenesUnicas.length,
+      terms: ordenesUnicas.filter(s => s.ordenes_trabajo?.estado === "terminada").length,
+    };
+  });
+
   if (loading) return <div style={{ padding:60, textAlign:"center", color:C.muted }}>Cargando métricas…</div>;
 
   return (
@@ -545,12 +573,12 @@ export default function PanelTecnicos() {
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={tecnicos.map(t => {
-              const m = metricas[t.id] ?? {};
+              const m = metricasTabla[t.id] ?? metricas[t.id] ?? {};
               const nombre = t.nombre_completo.split(" ").slice(-2).join(" ");
               return {
                 nombre,
-                "Trabajadas": periodo === "semana" ? m.hrsTrabSem : m.hrsTrabMes,
-                "Disponibles": periodo === "semana" ? m.hrsSem : m.hrsMes,
+                "Trabajadas": periodo === "semana" ? (m.hrsTrab ?? 0) : m.hrsTrabMes,
+                "Disponibles": periodo === "semana" ? (m.hrsSem ?? 0) : m.hrsMes,
               };
             })} barSize={18} barGap={4}>
               <XAxis dataKey="nombre" tick={{ fill:C.muted, fontSize:10 }} axisLine={false} tickLine={false} />
@@ -571,8 +599,8 @@ export default function PanelTecnicos() {
           </div>
           <div style={{ display:"grid", gap:14 }}>
             {tecnicos.map(t => {
-              const m     = metricas[t.id] ?? {};
-              const aprov = periodo === "semana" ? m.aprovSem : m.aprovMes;
+              const m     = metricasTabla[t.id] ?? metricas[t.id] ?? {};
+              const aprov = periodo === "semana" ? m.aprov : m.aprovMes;
               const nombre = t.nombre_completo.split(",")[0] ?? t.nombre_completo;
               return (
                 <div key={t.id}>
