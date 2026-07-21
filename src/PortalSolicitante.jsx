@@ -208,10 +208,15 @@ function MisOrdenes({ usuario, onNueva, onSalir }) {
             <div style={{ marginTop:16, borderTop:`1px solid ${C.border}`, paddingTop:16 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                 <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1 }}>Plano / Archivo adjunto</div>
-                <label style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"4px 12px", fontSize:11, fontWeight:600, cursor:"pointer" }}>
-                  {subiendoPlano ? "Subiendo…" : ordenSel.archivo_url ? "🔄 Actualizar plano" : "📎 Adjuntar plano"}
-                  <input ref={planoRef} type="file" accept=".pdf,.dwg,.dxf,.doc,.docx,.png,.jpg" style={{ display:"none" }} onChange={onSubirPlano} disabled={subiendoPlano} />
-                </label>
+                {ordenSel?.estado !== "terminada" && (
+                  <label style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"4px 12px", fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                    {subiendoPlano ? "Subiendo…" : ordenSel.archivo_url ? "🔄 Actualizar plano" : "📎 Adjuntar plano"}
+                    <input ref={planoRef} type="file" accept=".pdf,.dwg,.dxf,.doc,.docx,.png,.jpg" style={{ display:"none" }} onChange={onSubirPlano} disabled={subiendoPlano} />
+                  </label>
+                )}
+                {ordenSel?.estado === "terminada" && (
+                  <span style={{ color:C.muted, fontSize:11, fontStyle:"italic" }}>Orden terminada — sin edición</span>
+                )}
               </div>
               {planoUrl ? (
                 ordenSel.archivo_nombre?.match(/\.(pdf)$/i) ? (

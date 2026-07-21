@@ -365,10 +365,15 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
                 <div style={{ gridColumn:"1/-1", marginTop:4 }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
                     <div style={{ color:C.muted, fontSize:11 }}>Plano / Archivo adjunto</div>
-                    <label style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:600, cursor:"pointer" }}>
-                      {subiendoPlano ? "Subiendo…" : "🔄 Actualizar plano"}
-                      <input ref={planoRef} type="file" accept=".pdf,.dwg,.dxf,.doc,.docx,.png,.jpg" style={{ display:"none" }} onChange={onSubirPlano} disabled={subiendoPlano} />
-                    </label>
+                    {!terminadaBloqueada && (
+                      <label style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                        {subiendoPlano ? "Subiendo…" : "🔄 Actualizar plano"}
+                        <input ref={planoRef} type="file" accept=".pdf,.dwg,.dxf,.doc,.docx,.png,.jpg" style={{ display:"none" }} onChange={onSubirPlano} disabled={subiendoPlano} />
+                      </label>
+                    )}
+                    {terminadaBloqueada && (
+                      <span style={{ color:C.muted, fontSize:11, fontStyle:"italic" }}>Orden terminada — sin edición</span>
+                    )}
                   </div>
                   {orden.archivo_nombre?.match(/\.(pdf)$/i) ? (
                     <iframe src={planoUrl} style={{ width:"100%", height:400, border:`1px solid ${C.border}`, borderRadius:8 }} title="Plano" />
@@ -381,10 +386,14 @@ function ModalOrden({ orden, onClose, onActualizado, usuario, tecnicos, material
               ) : (
                 <div style={{ gridColumn:"1/-1", marginTop:4 }}>
                   <div style={{ color:C.muted, fontSize:11, marginBottom:6 }}>Plano / Archivo adjunto</div>
-                  <label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:20, border:`1px dashed ${C.border}`, borderRadius:8, cursor:"pointer", color:C.muted, fontSize:12, transition:"all 0.2s" }}>
-                    📎 {subiendoPlano ? "Subiendo…" : "Adjuntar plano o documento"}
-                    <input ref={planoRef} type="file" accept=".pdf,.dwg,.dxf,.doc,.docx,.png,.jpg" style={{ display:"none" }} onChange={onSubirPlano} disabled={subiendoPlano} />
-                  </label>
+                  {!terminadaBloqueada ? (
+                    <label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:20, border:`1px dashed ${C.border}`, borderRadius:8, cursor:"pointer", color:C.muted, fontSize:12, transition:"all 0.2s" }}>
+                      📎 {subiendoPlano ? "Subiendo…" : "Adjuntar plano o documento"}
+                      <input ref={planoRef} type="file" accept=".pdf,.dwg,.dxf,.doc,.docx,.png,.jpg" style={{ display:"none" }} onChange={onSubirPlano} disabled={subiendoPlano} />
+                    </label>
+                  ) : (
+                    <div style={{ padding:20, textAlign:"center", border:`1px dashed ${C.border}`, borderRadius:8, color:C.muted, fontSize:12 }}>Sin plano adjunto</div>
+                  )}
                 </div>
               )}
             </div>
