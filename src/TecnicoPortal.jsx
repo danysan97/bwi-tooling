@@ -33,12 +33,34 @@ const focusRing = {
   onBlur: (e) => { e.target.style.borderColor = C.border; e.target.style.boxShadow = "none"; },
 };
 
+const btnSmall = { width:28, height:28, borderRadius:6, border:`1px solid ${C.border}`, background:C.bg, color:C.text, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, transition:"all 0.15s" };
+
 function getSemanaActual() {
   const hoy = new Date();
   const dia = hoy.getDay() || 7;
   const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - dia + 1); lunes.setHours(0,0,0,0);
-  const vier = new Date(lunes); vier.setDate(lunes.getDate() + 4); vier.setHours(23,59,59,999);
+  const vier = new Date(lunes); vier.setDate(lunes.getDate() + 6); vier.setHours(23,59,59,999);
   return { inicio: lunes, fin: vier };
+}
+
+function semanaARango(anio, semana) {
+  const enero1 = new Date(anio, 0, 1);
+  const diaSemana = enero1.getDay() || 7;
+  const lunesInicio = new Date(enero1);
+  lunesInicio.setDate(enero1.getDate() - diaSemana + 1 + (semana - 1) * 7);
+  lunesInicio.setHours(0, 0, 0, 0);
+  const fin = new Date(lunesInicio);
+  fin.setDate(lunesInicio.getDate() + 6);
+  fin.setHours(23, 59, 59, 999);
+  return { inicio: lunesInicio, fin };
+}
+
+function getNumeroSemana(fecha) {
+  const d = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
 function getMesActual() {
@@ -426,6 +448,11 @@ export default function TecnicoPortal({ usuario, onSalir }) {
   const [perfil, setPerfil] = useState(null);
   const [pantalla, setPantalla] = useState("ordenes");
   const [allRegistros, setAllRegistros] = useState([]);
+  const hoy = new Date();
+  const [selSemana, setSelSemana] = useState(getNumeroSemana(hoy));
+  const [selMes, setSelMes]       = useState(hoy.getMonth());
+  const [selAnio, setSelAnio]     = useState(hoy.getFullYear());
+  const [modoPeriodo, setModoPeriodo] = useState("semana");
 
   useEffect(() => { cargar(); }, []);
 
@@ -473,12 +500,11 @@ export default function TecnicoPortal({ usuario, onSalir }) {
   const terminadas = ordenes.filter(o => o.ordenes_trabajo?.estado === "terminada").length;
   const enProceso = ordenes.filter(o => o.ordenes_trabajo?.estado === "en_proceso").length;
   const turno = perfil?.turno ?? "primero";
-  const sem = getSemanaActual();
-  const mes = getMesActual();
-  const semInicio = sem.inicio.toISOString().slice(0,10);
-  const semFin = sem.fin.toISOString().slice(0,10);
-  const mesInicio = mes.inicio.toISOString().slice(0,10);
-  const mesFin = mes.fin.toISOString().slice(0,10);
+  const semRango = semanaARango(selAnio, selSemana);
+  const semInicio = semRango.inicio.toISOString().slice(0,10);
+  const semFin = semRango.fin.toISOString().slice(0,10);
+  const mesInicio = new Date(selAnio, selMes, 1).toISOString().slice(0,10);
+  const mesFin = new Date(selAnio, selMes + 1, 0).toISOString().slice(0,10);
   const hrsSem = allRegistros.filter(r => r.fecha >= semInicio && r.fecha <= semFin).reduce((s, r) => s + (Number(r.horas) || 0), 0);
   const hrsMes = allRegistros.filter(r => r.fecha >= mesInicio && r.fecha <= mesFin).reduce((s, r) => s + (Number(r.horas) || 0), 0);
   const aprovSem = HRS_SEMANA[turno] > 0 ? Math.round((hrsSem / HRS_SEMANA[turno]) * 100) : 0;
@@ -620,6 +646,35 @@ export default function TecnicoPortal({ usuario, onSalir }) {
 
         {pantalla === "rendimiento" && (
           <div style={{ display:"grid", gap:16 }}>
+            {/* Selector de período */}
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"16px 22px", display:"flex", alignItems:"center", gap:16, flexWrap:"wrap" }}>
+              <div style={{ display:"flex", borderRadius:8, overflow:"hidden", border:`1px solid ${C.border}` }}>
+                {[["semana","Semana"],["mes","Mes"]].map(([k,l]) => (
+                  <button key={k} onClick={() => setModoPeriodo(k)} style={{ padding:"6px 16px", fontSize:13, fontWeight:600, border:"none", cursor:"pointer", transition:"all 0.2s", background: modoPeriodo === k ? C.accent : "transparent", color: modoPeriodo === k ? "#fff" : C.muted }}>{l}</button>
+                ))}
+              </div>
+              {modoPeriodo === "semana" ? (
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ color:C.textSub, fontSize:12, minWidth:70 }}>Semana</span>
+                  <button onClick={() => { setSelSemana(s => s > 1 ? s - 1 : 52); if (selSemana <= 1) setSelAnio(a => a - 1); }} style={{ ...btnSmall }}>◀</button>
+                  <input type="number" min={1} max={52} value={selSemana} onChange={e => setSelSemana(Math.max(1, Math.min(52, Number(e.target.value) || 1)))} style={{ width:52, textAlign:"center", background:C.bg, border:`1px solid ${C.border}`, borderRadius:6, color:C.text, fontSize:12, padding:"4px 0" }} />
+                  <button onClick={() => { setSelSemana(s => s < 52 ? s + 1 : 1); if (selSemana >= 52) setSelAnio(a => a + 1); }} style={{ ...btnSmall }}>▶</button>
+                  <span style={{ color:C.textSub, fontSize:12, minWidth:36 }}>· {selAnio}</span>
+                  <button onClick={() => { const h = new Date(); setSelAnio(h.getFullYear()); setSelSemana(getNumeroSemana(h)); }} style={{ ...btnSmall, background:C.accent, color:"#fff", border:"none" }}>Hoy</button>
+                </div>
+              ) : (
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ color:C.textSub, fontSize:12, minWidth:60 }}>Mes</span>
+                  <button onClick={() => { if (selMes === 0) { setSelMes(11); setSelAnio(a => a - 1); } else setSelMes(m => m - 1); }} style={{ ...btnSmall }}>◀</button>
+                  <span style={{ color:C.text, fontSize:13, fontWeight:600, minWidth:100, textAlign:"center" }}>{["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][selMes]}</span>
+                  <button onClick={() => { if (selMes === 11) { setSelMes(0); setSelAnio(a => a + 1); } else setSelMes(m => m + 1); }} style={{ ...btnSmall }}>▶</button>
+                  <span style={{ color:C.textSub, fontSize:12, minWidth:36 }}>· {selAnio}</span>
+                  <button onClick={() => { const h = new Date(); setSelAnio(h.getFullYear()); setSelMes(h.getMonth()); }} style={{ ...btnSmall, background:C.accent, color:"#fff", border:"none" }}>Hoy</button>
+                </div>
+              )}
+            </div>
+
+            {/* KPI cards */}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10 }}>
               {[
                 { label:"Hrs semana", value:`${hrsSem.toFixed(1)}`, sub:`/ ${HRS_SEMANA[turno]}`, color:C.accent },
