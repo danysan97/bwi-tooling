@@ -215,6 +215,7 @@ export default function PanelTecnicos() {
 
   // Selector de semana para la tabla principal
   const [tablaSemana, setTablaSemana] = useState(getNumeroSemana(hoy));
+  const [tablaMes, setTablaMes]       = useState(hoy.getMonth());
   const [tablaAnio, setTablaAnio]     = useState(hoy.getFullYear());
 
   useEffect(() => { cargar(); }, []);
@@ -418,29 +419,36 @@ export default function PanelTecnicos() {
 
   const aprovColor = pct => pct >= 80 ? C.success : pct >= 50 ? C.warn : C.danger;
 
-  // Métricas de la semana seleccionada para la tabla y gráficas
+  // Métricas de la semana/mes seleccionado para la tabla y gráficas
+  const tablaRangoMes = new Date(tablaAnio, tablaMes + 1, 0);
+  const tablaMesInicio = new Date(tablaAnio, tablaMes, 1).toISOString().slice(0,10);
+  const tablaMesFin = tablaRangoMes.toISOString().slice(0,10);
   const tablaRango = tablaSemana && tablaAnio ? semanaARango(tablaAnio, tablaSemana) : null;
   const tablaRangoInicio = tablaRango ? tablaRango.inicio.toISOString().slice(0,10) : null;
   const tablaRangoFin = tablaRango ? tablaRango.fin.toISOString().slice(0,10) : null;
   const metricasTabla = {};
   tecnicos.forEach(t => {
     const hrsSem = HRS_SEMANA[t.turno ?? "primero"];
+    const hrsMes = HRS_MES[t.turno ?? "primero"];
     const misRegs = allRegs.filter(r => r.tecnico_id === t.id);
-    const regsSel = tablaRangoInicio ? misRegs.filter(r => r.fecha >= tablaRangoInicio && r.fecha <= tablaRangoFin) : [];
+    const rInicio = periodo === "semana" ? tablaRangoInicio : tablaMesInicio;
+    const rFin = periodo === "semana" ? tablaRangoFin : tablaMesFin;
+    const regsSel = rInicio ? misRegs.filter(r => r.fecha >= rInicio && r.fecha <= rFin) : [];
     const hrsTrab = parseFloat(regsSel.reduce((s, r) => s + (Number(r.horas) || 0), 0).toFixed(1));
     const ordenIdsReg = [...new Set(regsSel.map(r => r.orden_id).filter(Boolean))];
     const segsByOrdenLocal = new Map(allSegs.map(s => [s.orden_id, s]));
     const enSemanaFromRegs = ordenIdsReg.map(id => segsByOrdenLocal.get(id)).filter(Boolean);
     const misSegs = allSegs.filter(s => s.tecnico_id === t.id);
-    const enSemanaFecha = misSegs.filter(s => {
+    const enRangoFecha = misSegs.filter(s => {
       const f = s.fecha_inicio;
-      return f && f.slice(0,10) >= tablaRangoInicio && f.slice(0,10) <= tablaRangoFin;
+      return f && f.slice(0,10) >= rInicio && f.slice(0,10) <= rFin;
     });
-    const ordenesUnicas = [...new Map([...enSemanaFecha, ...enSemanaFromRegs].map(s => [s.orden_id, s])).values()];
+    const ordenesUnicas = [...new Map([...enRangoFecha, ...enSemanaFromRegs].map(s => [s.orden_id, s])).values()];
+    const hrsBase = periodo === "semana" ? hrsSem : hrsMes;
     metricasTabla[t.id] = {
-      hrsSem,
+      hrsSem, hrsMes,
       hrsTrab,
-      aprov: hrsSem > 0 ? Math.round((hrsTrab / hrsSem) * 100) : 0,
+      aprov: hrsBase > 0 ? Math.round((hrsTrab / hrsBase) * 100) : 0,
       ords: ordenesUnicas.length,
       terms: ordenesUnicas.filter(s => s.ordenes_trabajo?.estado === "terminada").length,
     };
@@ -454,13 +462,13 @@ export default function PanelTecnicos() {
         <div style={{ display:"flex", alignItems:"baseline", gap:12 }}>
           <div style={{ color:C.text, fontWeight:700, fontSize:18 }}>Panel de Técnicos</div>
           <div style={{ color:C.textSub, fontWeight:600, fontSize:14 }}>
-            {periodo === "semana" ? `Semana ${tablaSemana} · ${tablaAnio}` : periodo === "mes" ? `${new Date().toLocaleDateString("es-MX", { month:"long", year:"numeric" })}` : "Histórico"}
+            {periodo === "semana" ? `Semana ${tablaSemana} · ${tablaAnio}` : periodo === "mes" ? `${new Date(tablaAnio, tablaMes).toLocaleDateString("es-MX", { month:"long", year:"numeric" })}` : "Histórico"}
           </div>
         </div>
         <div style={{ display:"flex", gap:4, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:4 }}>
           {["semana","mes","total"].map(p => (
             <button key={p} onClick={() => setPeriodo(p)} style={{ background:periodo===p?C.accent:"transparent", color:periodo===p?"#fff":C.muted, border:"none", borderRadius:8, padding:"6px 16px", cursor:"pointer", fontWeight:600, fontSize:12, textTransform:"capitalize" }}>
-              {p === "semana" ? "Esta semana" : p === "mes" ? "Este mes" : "Total"}
+              {p === "semana" ? "Semana" : p === "mes" ? "Mes" : "Total"}
             </button>
           ))}
         </div>
@@ -470,7 +478,7 @@ export default function PanelTecnicos() {
       <Card style={{ padding:0, marginBottom:16 }}>
         <div style={{ padding:"12px 20px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10 }}>
           <span style={{ fontWeight:600, fontSize:14 }}>
-            Resumen de desempeño — {periodo === "semana" ? `Semana ${tablaSemana}` : periodo === "mes" ? "Mes actual" : "Histórico"}
+            Resumen de desempeño — {periodo === "semana" ? `Semana ${tablaSemana}` : periodo === "mes" ? `${new Date(tablaAnio, tablaMes).toLocaleDateString("es-MX",{month:"long", year:"numeric"})}` : "Histórico"}
           </span>
           {periodo === "semana" && (
             <div style={{ display:"flex", gap:6, alignItems:"center" }}>
@@ -485,6 +493,19 @@ export default function PanelTecnicos() {
               <button onClick={() => { if (tablaSemana < 52) { setTablaSemana(tablaSemana + 1); } else { setTablaAnio(tablaAnio + 1); setTablaSemana(1); } }} style={{ background:C.border, color:C.text, border:"none", borderRadius:6, width:28, height:28, cursor:"pointer", fontWeight:700, fontSize:14 }}>›</button>
             </div>
           )}
+          {periodo === "mes" && (
+            <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+              <button onClick={() => { if (tablaMes > 0) { setTablaMes(tablaMes - 1); } else { setTablaAnio(tablaAnio - 1); setTablaMes(11); } }} style={{ background:C.border, color:C.text, border:"none", borderRadius:6, width:28, height:28, cursor:"pointer", fontWeight:700, fontSize:14 }}>‹</button>
+              <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+                <span style={{ fontSize:12, color:C.textSub }}>Mes</span>
+                <span style={{ fontSize:13, fontWeight:600, color:C.text, minWidth:90, textAlign:"center" }}>{new Date(tablaAnio, tablaMes).toLocaleDateString("es-MX",{month:"long"})}</span>
+                <span style={{ fontSize:12, color:C.textSub }}>Año</span>
+                <input type="number" min={2020} max={2030} value={tablaAnio} onChange={e => setTablaAnio(Number(e.target.value) || 2026)} style={{ width:60, background:C.bg, border:`1px solid ${C.border}`, borderRadius:6, padding:"4px 6px", textAlign:"center", fontSize:12, color:C.text }} />
+              </div>
+              <button onClick={() => { setTablaMes(new Date().getMonth()); setTablaAnio(new Date().getFullYear()); }} style={{ background:C.accent+"22", color:C.accent, border:`1px solid ${C.accent}55`, borderRadius:6, padding:"4px 10px", cursor:"pointer", fontWeight:600, fontSize:11 }}>Hoy</button>
+              <button onClick={() => { if (tablaMes < 11) { setTablaMes(tablaMes + 1); } else { setTablaAnio(tablaAnio + 1); setTablaMes(0); } }} style={{ background:C.border, color:C.text, border:"none", borderRadius:6, width:28, height:28, cursor:"pointer", fontWeight:700, fontSize:14 }}>›</button>
+            </div>
+          )}
         </div>
         <div style={{ overflowX:"auto" }}>
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
@@ -496,38 +517,13 @@ export default function PanelTecnicos() {
               </tr>
             </thead>
             <tbody>
-              {(() => {
-                const rangoSel = tablaSemana && tablaAnio ? semanaARango(tablaAnio, tablaSemana) : null;
-                const rangoInicio = rangoSel ? rangoSel.inicio.toISOString().slice(0,10) : null;
-                const rangoFin = rangoSel ? rangoSel.fin.toISOString().slice(0,10) : null;
-                return tecnicos.map((t,i) => {
-                const m = metricas[t.id] ?? {};
-                let hrsDisp, hrsTrab, aprov, ords, terms;
-                if (periodo === "semana" && rangoInicio) {
-                  const hrsSem = HRS_SEMANA[t.turno ?? "primero"];
-                  const misRegs = allRegs.filter(r => r.tecnico_id === t.id);
-                  const regsSel = misRegs.filter(r => r.fecha >= rangoInicio && r.fecha <= rangoFin);
-                  hrsTrab = parseFloat(regsSel.reduce((s, r) => s + (Number(r.horas) || 0), 0).toFixed(1));
-                  hrsDisp = hrsSem;
-                  aprov = hrsSem > 0 ? Math.round((hrsTrab / hrsSem) * 100) : 0;
-                  const ordenIdsReg = [...new Set(regsSel.map(r => r.orden_id).filter(Boolean))];
-                  const segsByOrdenLocal = new Map(allSegs.map(s => [s.orden_id, s]));
-                  const enSemanaFromRegs = ordenIdsReg.map(id => segsByOrdenLocal.get(id)).filter(Boolean);
-                  const misSegs = allSegs.filter(s => s.tecnico_id === t.id);
-                  const enSemanaFecha = misSegs.filter(s => {
-                    const f = s.fecha_inicio;
-                    return f && f.slice(0,10) >= rangoInicio && f.slice(0,10) <= rangoFin;
-                  });
-                  const ordenesUnicas = [...new Map([...enSemanaFecha, ...enSemanaFromRegs].map(s => [s.orden_id, s])).values()];
-                  ords = ordenesUnicas.length;
-                  terms = ordenesUnicas.filter(s => s.ordenes_trabajo?.estado === "terminada").length;
-                } else {
-                  hrsDisp = periodo === "mes" ? m.hrsMes : null;
-                  hrsTrab = periodo === "mes" ? m.hrsTrabMes : m.hrsTotal;
-                  aprov   = periodo === "mes" ? m.aprovMes : null;
-                  ords    = periodo === "mes" ? m.ordenesMes : m.ordenesTotal;
-                  terms   = periodo === "mes" ? m.terminadasMes : m.terminadasTotal;
-                }
+              {tecnicos.map((t,i) => {
+                const m = metricasTabla[t.id] ?? {};
+                const hrsDisp = periodo === "semana" ? m.hrsSem : m.hrsMes;
+                const hrsTrab = m.hrsTrab ?? 0;
+                const aprov   = m.aprov ?? null;
+                const ords    = m.ords ?? 0;
+                const terms   = m.terms ?? 0;
 
                 return (
                   <tr key={t.id} style={{ borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":C.bg+"66" }}>
@@ -556,7 +552,7 @@ export default function PanelTecnicos() {
                     </td>
                   </tr>
                 );
-              });})()}
+              })}
             </tbody>
           </table>
         </div>
@@ -569,7 +565,7 @@ export default function PanelTecnicos() {
         <Card>
           <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>Comparativa</div>
           <div style={{ color:C.text, fontSize:15, fontWeight:600, marginBottom:16 }}>
-            Horas trabajadas vs disponibles — {periodo === "semana" ? "Semana" : "Mes"}
+            Horas trabajadas vs disponibles — {periodo === "semana" ? "Semana" : periodo === "mes" ? "Mes" : "Histórico"}
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={tecnicos.map(t => {
@@ -577,8 +573,8 @@ export default function PanelTecnicos() {
               const nombre = t.nombre_completo.split(" ").slice(-2).join(" ");
               return {
                 nombre,
-                "Trabajadas": periodo === "semana" ? (m.hrsTrab ?? 0) : m.hrsTrabMes,
-                "Disponibles": periodo === "semana" ? (m.hrsSem ?? 0) : m.hrsMes,
+                "Trabajadas": m.hrsTrab ?? 0,
+                "Disponibles": periodo === "semana" ? (m.hrsSem ?? 0) : (m.hrsMes ?? 0),
               };
             })} barSize={18} barGap={4}>
               <XAxis dataKey="nombre" tick={{ fill:C.muted, fontSize:10 }} axisLine={false} tickLine={false} />
@@ -595,12 +591,12 @@ export default function PanelTecnicos() {
         <Card>
           <div style={{ color:C.textSub, fontSize:11, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>Eficiencia</div>
           <div style={{ color:C.text, fontSize:15, fontWeight:600, marginBottom:20 }}>
-            Aprovechamiento — {periodo === "semana" ? "Semana" : "Mes"}
+            Aprovechamiento — {periodo === "semana" ? "Semana" : periodo === "mes" ? "Mes" : "Histórico"}
           </div>
           <div style={{ display:"grid", gap:14 }}>
             {tecnicos.map(t => {
               const m     = metricasTabla[t.id] ?? metricas[t.id] ?? {};
-              const aprov = periodo === "semana" ? m.aprov : m.aprovMes;
+              const aprov = m.aprov ?? null;
               const nombre = t.nombre_completo.split(",")[0] ?? t.nombre_completo;
               return (
                 <div key={t.id}>
